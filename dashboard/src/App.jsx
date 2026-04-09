@@ -162,7 +162,11 @@ function MetricCard({ Icon, label, value, color }) {
 function OverviewPage({ data }) {
   if (!data) return <div className="loading">Loading stats…</div>
 
-  const { metrics, weekly_chart, tier_distribution, fraud_summary, active_disruptions } = data
+  const metrics = data.metrics || {}
+  const weekly_chart = data.weekly_chart || []
+  const tier_distribution = data.tier_distribution || []
+  const fraud_summary = data.fraud_summary || {}
+  const active_disruptions = data.active_disruptions || []
 
   const tierData = tier_distribution.map(t => ({
     ...t,
@@ -172,10 +176,10 @@ function OverviewPage({ data }) {
   return (
     <>
       <div className="metrics-grid">
-        <MetricCard Icon={Users}         label="Active Workers"     value={metrics.active_workers.toLocaleString()}  color="#1A56DB" />
-        <MetricCard Icon={Shield}        label="Active Policies"    value={metrics.active_policies.toLocaleString()} color="#10B981" />
-        <MetricCard Icon={ClipboardList} label="Claims This Week"   value={metrics.claims_this_week.toLocaleString()} color="#F59E0B" />
-        <MetricCard Icon={Banknote}      label="Payouts This Week"  value={fmt(metrics.payouts_this_week)}            color="#8B5CF6" />
+        <MetricCard Icon={Users}         label="Active Workers"     value={(metrics.active_workers ?? 0).toLocaleString()}  color="#1A56DB" />
+        <MetricCard Icon={Shield}        label="Active Policies"    value={(metrics.active_policies ?? 0).toLocaleString()} color="#10B981" />
+        <MetricCard Icon={ClipboardList} label="Claims This Week"   value={(metrics.claims_this_week ?? 0).toLocaleString()} color="#F59E0B" />
+        <MetricCard Icon={Banknote}      label="Payouts This Week"  value={fmt(metrics.payouts_this_week ?? 0)}            color="#8B5CF6" />
       </div>
 
       <div className="charts-grid">
@@ -234,9 +238,9 @@ function OverviewPage({ data }) {
           <div className="card-title">Fraud Summary</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {[
-              { label: 'Auto-approved (score < 30)', val: fraud_summary.auto_approved, Icon: CheckCircle, color: 'var(--success)' },
-              { label: 'Under review (30–70)',        val: fraud_summary.under_review,  Icon: Clock,        color: 'var(--warning)' },
-              { label: 'Auto-rejected (score > 70)', val: fraud_summary.auto_rejected, Icon: XCircle,      color: 'var(--danger)' },
+              { label: 'Auto-approved (score < 30)', val: fraud_summary.auto_approved ?? 0, Icon: CheckCircle, color: 'var(--success)' },
+              { label: 'Under review (30–70)',        val: fraud_summary.under_review ?? 0,  Icon: Clock,        color: 'var(--warning)' },
+              { label: 'Auto-rejected (score > 70)', val: fraud_summary.auto_rejected ?? 0, Icon: XCircle,      color: 'var(--danger)' },
             ].map(({ label, val, Icon, color }, i) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: 13, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -394,7 +398,7 @@ export default function App() {
   const [workers, setWorkers]       = useState(null)
 
   useEffect(() => {
-    fetch(`${API}/admin/stats`).then(r => r.json()).then(setStats).catch(() => {})
+    fetch(`${API}/admin/stats`).then(r => r.json()).then(d => setStats(d && typeof d === 'object' ? d : {})).catch(() => setStats({}))
   }, [])
 
   useEffect(() => {
