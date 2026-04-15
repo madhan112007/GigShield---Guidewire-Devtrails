@@ -1,0 +1,14 @@
+[Unit]
+Description=Susanoo Celery Worker
+After=network.target redis6.service
+
+[Service]
+User=ec2-user
+WorkingDirectory=/home/ec2-user/susanoo/backend
+Environment="PATH=/home/ec2-user/susanoo/backend/venv/bin"
+ExecStart=/home/ec2-user/susanoo/backend/venv/bin/celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
