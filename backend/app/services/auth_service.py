@@ -1,5 +1,6 @@
 import random
 import httpx
+import redis as redis_client
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -15,8 +16,14 @@ from app.models.models import Worker
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
-# In-memory OTP store (use Redis in production)
-otp_store: dict = {}
+# Redis-backed OTP store — shared across all gunicorn workers
+try:
+    _redis = redis_client.from_url(settings.REDIS_URL, decode_responses=True)
+    _redis.ping()
+    _use_redis = True
+except Exception:
+    _use_redis = False
+    otp_store: dict = {}
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
@@ -57,7 +64,10 @@ async def send_otp_sms(phone: str, otp: str) -> bool:
 
 def generate_otp(phone: str) -> str:
     otp = str(random.randint(100000, 999999))
-    otp_store[phone] = {"otp": otp, "expires": datetime.utcnow() + timedelta(minutes=10)}
+    if _use_redis:
+        _redis.setex(f"otp:{phone}", 600, otp)  # expires in 10 min
+    else:
+        otp_store[phone] = {"otp": otp, "expires": datetime.utcnow() + timedelta(minutes=10)}
     print("[OTP] Phone: " + phone + " OTP: " + otp)
     return otp
 
@@ -65,7 +75,16 @@ def generate_otp(phone: str) -> str:
 def verify_otp(phone: str, otp: str) -> bool:
     # Dev shortcut: always accept 123456
     if otp == "123456":
-        otp_store.pop(phone, None)
+        if _use_redis:
+            _redis.delete(f"otp:{phone}")
+        else:
+            otp_store.pop(phone, None)
+        return True
+    if _use_redis:
+        stored = _redis.get(f"otp:{phone}")
+        if not stored or stored != otp:
+            return False
+        _redis.delete(f"otp:{phone}")
         return True
     record = otp_store.get(phone)
     if not record:
