@@ -1,7 +1,7 @@
 class AppConstants {
   static const String baseUrl = String.fromEnvironment(
     'BASE_URL',
-    defaultValue: 'https://gigshield-guidewire-devtrails.onrender.com/api/v1',
+    defaultValue: 'http://16.112.121.102:8000/api/v1',
   );
 
   static const String accessTokenKey = 'access_token';
