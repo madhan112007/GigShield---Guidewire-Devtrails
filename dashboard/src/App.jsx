@@ -1349,7 +1349,8 @@ const MOCK_WORKERS = [
 ]
 
 function ClaimsPage({ data, selectedClaim, setSelectedClaim }) {
-  const claims = data?.length ? data : MOCK_CLAIMS
+  const claims = data === null ? MOCK_CLAIMS : data
+  if (data === null) return <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>Loading claims...</div>
 
   return (
     <>
@@ -1420,7 +1421,8 @@ function ClaimsPage({ data, selectedClaim, setSelectedClaim }) {
 }
 
 function DisruptionsPage({ data }) {
-  const disruptions = data?.length ? data : MOCK_DISRUPTIONS
+  const disruptions = data === null ? MOCK_DISRUPTIONS : data
+  if (data === null) return <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>Loading disruptions...</div>
 
   return (
     <motion.div className="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
@@ -1471,7 +1473,8 @@ function DisruptionsPage({ data }) {
 }
 
 function WorkersPage({ data }) {
-  const workers = data?.length ? data : MOCK_WORKERS
+  const workers = data === null ? MOCK_WORKERS : data
+  if (data === null) return <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>Loading workers...</div>
 
   return (
     <motion.div className="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
