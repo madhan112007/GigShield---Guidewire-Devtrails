@@ -222,25 +222,45 @@ class HomeScreen extends ConsumerWidget {
         return;
       }
 
+      // Disruption created — always show green for this
+      messenger.showSnackBar(SnackBar(
+        content: Text('${events.length} disruption(s) detected in $city!'),
+        backgroundColor: AppTheme.success,
+        duration: const Duration(seconds: 2),
+      ));
+
+      // Refresh dashboard to show the disruption tile
+      ref.invalidate(dashboardProvider);
+
+      // Now try to auto-trigger claim
       final eventId = events.first['id'] as String?;
       if (eventId != null) {
+        await Future.delayed(const Duration(milliseconds: 800));
         try {
           await api.triggerClaim(eventId);
-          messenger.showSnackBar(SnackBar(
-            content: Text('${events.length} disruption(s) detected — claim auto-triggered!'),
-            backgroundColor: AppTheme.success,
-            duration: const Duration(seconds: 3),
-          ));
+          if (context.mounted) {
+            messenger.showSnackBar(SnackBar(
+              content: Text('Claim auto-triggered! ₹ payout initiated.'),
+              backgroundColor: AppTheme.success,
+              duration: const Duration(seconds: 4),
+            ));
+          }
         } catch (claimErr) {
           final errStr = claimErr.toString();
-          final msg = errStr.contains('No active policy')
-              ? 'Disruption detected! Buy a policy to get paid automatically.'
-              : 'Disruption detected! Claim is being auto-processed.';
-          messenger.showSnackBar(SnackBar(
-            content: Text(msg),
-            backgroundColor: AppTheme.warning,
-            duration: const Duration(seconds: 3),
-          ));
+          if (context.mounted) {
+            if (errStr.contains('No active policy') || errStr.contains('400')) {
+              messenger.showSnackBar(SnackBar(
+                content: const Text('No active policy — buy a policy to get paid automatically.'),
+                backgroundColor: AppTheme.warning,
+                duration: const Duration(seconds: 4),
+                action: SnackBarAction(
+                  label: 'Buy Now',
+                  textColor: Colors.white,
+                  onPressed: () => context.go('/policy/buy'),
+                ),
+              ));
+            }
+          }
         }
       }
 
