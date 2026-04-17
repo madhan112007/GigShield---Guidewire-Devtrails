@@ -11,6 +11,16 @@ from typing import Optional
 from app.config import settings
 from app.models.models import DisruptionType, DisruptionSeverity
 
+# Historical trigger probability per city (used for next-week forecast in admin analytics)
+TRIGGER_PROBABILITY = {
+    "Bangalore": {"heavy_rain": 0.45, "traffic_disruption": 0.30, "aqi_spike": 0.15, "civic_emergency": 0.10},
+    "Mumbai":    {"heavy_rain": 0.55, "traffic_disruption": 0.25, "civic_emergency": 0.12, "extreme_heat": 0.08},
+    "Delhi":     {"extreme_heat": 0.40, "aqi_spike": 0.35, "traffic_disruption": 0.15, "civic_emergency": 0.10},
+    "Chennai":   {"heavy_rain": 0.40, "extreme_heat": 0.30, "civic_emergency": 0.15, "traffic_disruption": 0.15},
+    "Hyderabad": {"heavy_rain": 0.35, "extreme_heat": 0.25, "traffic_disruption": 0.25, "civic_emergency": 0.15},
+}
+
+
 # ── Hyper-local Infrastructure Score (0.0 = best, 1.0 = worst) ───────────────
 # Based on: drainage quality, road density, public transport, dark store coverage
 # Sources: Smart City Index, NIUA Urban Infrastructure Reports
