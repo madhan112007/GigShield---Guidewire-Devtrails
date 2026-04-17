@@ -21,11 +21,7 @@ SUPPORTED_CITIES = [
 
 def _run(coro):
     """Run an async coroutine from a sync Celery task."""
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
+    return asyncio.run(coro)
 
 
 async def _poll_and_store_disruptions(city: str, pincode: str, db) -> list:
