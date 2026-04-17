@@ -155,20 +155,26 @@ class HomeScreen extends ConsumerWidget {
           messenger.showSnackBar(SnackBar(
             content: Text('${events.length} disruption(s) detected — claim auto-triggered!'),
             backgroundColor: AppTheme.success,
+            duration: const Duration(seconds: 3),
           ));
         } catch (claimErr) {
+          final errStr = claimErr.toString();
+          final msg = errStr.contains('No active policy')
+              ? 'Disruption detected! Buy a policy to get paid automatically.'
+              : 'Disruption detected! Claim is being auto-processed.';
           messenger.showSnackBar(SnackBar(
-            content: Text('Disruption detected! Claim is being auto-processed.'),
+            content: Text(msg),
             backgroundColor: AppTheme.warning,
+            duration: const Duration(seconds: 3),
           ));
         }
       }
 
-      ref.invalidate(dashboardProvider);
-      ref.invalidate(claimsProvider);
-      await Future.delayed(const Duration(seconds: 2));
-      ref.invalidate(dashboardProvider);
-      ref.invalidate(claimsProvider);
+      await Future.delayed(const Duration(seconds: 3));
+      if (context.mounted) {
+        ref.invalidate(dashboardProvider);
+        ref.invalidate(claimsProvider);
+      }
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger));
     }
