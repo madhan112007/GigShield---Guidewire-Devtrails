@@ -3,8 +3,10 @@ Notification Service — in-app + FCM push notifications for claim lifecycle eve
 Uses FCM HTTP V1 API (Legacy API deprecated June 2024) with Service Account auth.
 Stores notifications in DB for in-app feed; optionally fires FCM push if configured.
 """
+from __future__ import annotations
 import json
 import httpx
+from typing import Optional
 from app.config import settings
 
 _SCOPES = ["https://www.googleapis.com/auth/firebase.messaging"]
@@ -33,7 +35,7 @@ _TEMPLATES = {
 }
 
 
-def _get_access_token() -> str | None:
+def _get_access_token() -> Optional[str]:
     """Get OAuth2 access token from Service Account JSON for FCM V1 API."""
     sa_path = settings.FCM_SERVICE_ACCOUNT_PATH.strip()
     if not sa_path or sa_path == "mock_key":

@@ -203,4 +203,8 @@ class ApiService {
     final res = await _dio.get('/location/weather', queryParameters: {'lat': lat, 'lon': lon});
     return res.data;
   }
+
+  Future<void> registerFcmToken(String token) async {
+    await _dio.post('/workers/fcm-token', data: {'fcm_token': token});
+  }
 }

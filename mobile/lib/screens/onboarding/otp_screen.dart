@@ -66,7 +66,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final token = await FirebaseService.getToken();
     if (token != null) {
       try {
-        await ref.read(apiServiceProvider).post('/workers/fcm-token', {'fcm_token': token});
+        await ref.read(apiServiceProvider).registerFcmToken(token);
         print('[FCM] Token registered: ${token.substring(0, 20)}...');
       } catch (e) {
         print('[FCM] Token registration failed: $e');
