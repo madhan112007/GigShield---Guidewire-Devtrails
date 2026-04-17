@@ -249,22 +249,16 @@ class HomeScreen extends ConsumerWidget {
         } catch (claimErr) {
           final errStr = claimErr.toString();
           if (context.mounted) {
-            String message = s.noActivePolicy;
-            if (errStr.contains('Policy has expired')) message = s.policyExpiring;
-            if (errStr.contains('not in your city')) message = s.notInYourCity;
-            if (errStr.contains('not covered in')) message = s.notCoveredInPool;
-            if (errStr.contains('Already claimed')) message = s.alreadyClaimed;
-            if (errStr.contains('Weekly payout cap')) message = s.capReached;
-
+            // Use generic message for all claim errors
             messenger.showSnackBar(SnackBar(
-              content: Text(message),
+              content: Text(s.noActivePolicy),
               backgroundColor: AppTheme.warning,
               duration: const Duration(seconds: 4),
-              action: message == s.noActivePolicy ? SnackBarAction(
+              action: SnackBarAction(
                 label: 'Buy Now',
                 textColor: Colors.white,
                 onPressed: () => context.go('/policy/buy'),
-              ) : null,
+              ),
             ));
           }
         }
