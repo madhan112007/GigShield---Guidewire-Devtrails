@@ -156,7 +156,11 @@ final claimsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
 
 final notificationsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final api = ref.watch(apiServiceProvider);
-  return api.listNotifications();
+  try {
+    return await api.listNotifications();
+  } catch (_) {
+    return [];
+  }
 });
 
 final payoutsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
@@ -220,15 +224,4 @@ final liveWeatherProvider = FutureProvider.autoDispose<Map<String, dynamic>>((re
   }
 
   return api.getWeatherByLocation(lat!, lon!);
-});
-
-// ── Notifications ─────────────────────────────────────────────────────────────
-
-final notificationsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
-  final api = ref.watch(apiServiceProvider);
-  try {
-    return await api.listNotifications();
-  } catch (_) {
-    return [];
-  }
 });

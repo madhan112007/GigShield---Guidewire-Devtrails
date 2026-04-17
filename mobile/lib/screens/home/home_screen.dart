@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:susanoo/providers/locale_provider.dart';
+import 'package:susanoo/l10n/app_strings.dart';
 import 'package:susanoo/theme/app_theme.dart';
 import 'package:susanoo/providers/app_providers.dart';
 import 'package:susanoo/utils/constants.dart';
@@ -179,7 +180,7 @@ class HomeScreen extends ConsumerWidget {
                             label: s.simulateEvent,
                             color: AppTheme.warning,
                             onTap: () => _simulate(
-                context, ref,
+                context, ref, s,
                 (worker['city'] as String?)?.isNotEmpty == true ? worker['city'] as String : 'Bangalore',
                 (worker['pincode'] as String?)?.isNotEmpty == true ? worker['pincode'] as String : '560001',
               ),
@@ -212,7 +213,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  void _simulate(BuildContext context, WidgetRef ref, String city, String pincode) async {
+  void _simulate(BuildContext context, WidgetRef ref, AppStrings s, String city, String pincode) async {
     final messenger = ScaffoldMessenger.of(context);
     final api = ref.read(apiServiceProvider);
     try {
@@ -248,18 +249,23 @@ class HomeScreen extends ConsumerWidget {
         } catch (claimErr) {
           final errStr = claimErr.toString();
           if (context.mounted) {
-            if (errStr.contains('No active policy') || errStr.contains('400')) {
-              messenger.showSnackBar(SnackBar(
-                content: const Text('No active policy — buy a policy to get paid automatically.'),
-                backgroundColor: AppTheme.warning,
-                duration: const Duration(seconds: 4),
-                action: SnackBarAction(
-                  label: 'Buy Now',
-                  textColor: Colors.white,
-                  onPressed: () => context.go('/policy/buy'),
-                ),
-              ));
-            }
+            String message = s.noActivePolicy;
+            if (errStr.contains('Policy has expired')) message = s.policyExpiring;
+            if (errStr.contains('not in your city')) message = s.notInYourCity;
+            if (errStr.contains('not covered in')) message = s.notCoveredInPool;
+            if (errStr.contains('Already claimed')) message = s.alreadyClaimed;
+            if (errStr.contains('Weekly payout cap')) message = s.capReached;
+
+            messenger.showSnackBar(SnackBar(
+              content: Text(message),
+              backgroundColor: AppTheme.warning,
+              duration: const Duration(seconds: 4),
+              action: message == s.noActivePolicy ? SnackBarAction(
+                label: 'Buy Now',
+                textColor: Colors.white,
+                onPressed: () => context.go('/policy/buy'),
+              ) : null,
+            ));
           }
         }
       }

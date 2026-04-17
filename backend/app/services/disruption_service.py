@@ -178,6 +178,7 @@ async def fetch_weather_mock(city: str) -> dict:
         "Delhi": {"rainfall_mm_per_hr": random.choice([0, 0, 0, 0, 15.0]), "temperature_c": random.choice([38.0, 42.0, 44.0, 46.5]), "description": "Clear sky, extreme heat"},
         "Bangalore": {"rainfall_mm_per_hr": random.choice([0, 0, 55.0, 80.0]), "temperature_c": random.uniform(24, 32), "description": "Heavy rain"},
         "Chennai": {"rainfall_mm_per_hr": random.choice([0, 0, 30.0, 90.0]), "temperature_c": random.uniform(30, 36), "description": "Thunderstorm"},
+        "Hyderabad": {"rainfall_mm_per_hr": random.choice([0, 0, 40.0, 65.0]), "temperature_c": random.uniform(28, 35), "description": "Cloudy with rain"},
     }
     return mock_scenarios.get(city, {"rainfall_mm_per_hr": 0, "temperature_c": 32.0, "description": "Clear"})
 

@@ -68,6 +68,7 @@ async def trigger_claim(
         select(Policy).where(
             Policy.worker_id == current_worker.id,
             Policy.status == PolicyStatus.ACTIVE,
+            Policy.end_date >= now,
         ).order_by(Policy.created_at.desc())
         .with_for_update()
     )
