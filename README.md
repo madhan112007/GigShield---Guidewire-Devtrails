@@ -2,12 +2,13 @@
 ### AI-Powered Parametric Income Insurance for Gig Economy Delivery Workers
 
 ![Flutter](https://img.shields.io/badge/Flutter-3.19+-02569B?style=flat-square&logo=flutter&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.11-009688?style=flat-square&logo=fastapi&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-4169E1?style=flat-square&logo=postgresql&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-Valkey_8-DC382D?style=flat-square&logo=redis&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-Python_3.9-009688?style=flat-square&logo=fastapi&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-RDS-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis6-EC2-DC382D?style=flat-square&logo=redis&logoColor=white)
 ![XGBoost](https://img.shields.io/badge/XGBoost-MAE_₹1.30-FF6600?style=flat-square)
-![Render](https://img.shields.io/badge/Deployed-Render-46E3B7?style=flat-square&logo=render&logoColor=white)
+![AWS](https://img.shields.io/badge/Deployed-AWS_EC2_ap--south--2-FF9900?style=flat-square&logo=amazonaws&logoColor=white)
 ![Razorpay](https://img.shields.io/badge/Razorpay-X_Payouts-02042B?style=flat-square&logo=razorpay&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-FCM_V1-FFCA28?style=flat-square&logo=firebase&logoColor=black)
 ![i18n](https://img.shields.io/badge/Languages-English%20%7C%20Tamil%20%7C%20Hindi-blueviolet?style=flat-square)
 
 > **Guidewire DEVTrails 2026 Hackathon — Phase 2 Submission**
@@ -94,9 +95,17 @@ Susanoo is an **AI-powered parametric income insurance platform** for gig delive
 
 | Component | URL |
 |-----------|-----|
-| Backend API | https://gigshield-guidewire-devtrails.onrender.com |
-| API Docs | https://gigshield-guidewire-devtrails.onrender.com/docs |
+| Backend API | http://16.112.121.102:8000 |
+| API Docs | http://16.112.121.102:8000/docs |
+| Admin Dashboard | Deployed via Netlify (see `dashboard/netlify.toml`) |
 | Android APK | Build from `mobile/` with `flutter build apk --release` |
+
+**Infrastructure:**
+- Backend: AWS EC2 `t3.small` — `ap-south-2` (Hyderabad) — `susanoo-backend`
+- Database: AWS RDS PostgreSQL — `susanoo-db.cz0ucow0ih0s.ap-south-2.rds.amazonaws.com`
+- Redis: Redis6 on EC2 (`redis6-server`, port 6379)
+- Process manager: `systemctl` — `susanoo.service` (gunicorn + uvicorn workers)
+- Firebase: Project `susanoo-d13b0` — FCM V1 API for push notifications
 
 **Demo credentials:**
 - Phone number: `9999999999` (or any 10-digit number)
@@ -379,12 +388,23 @@ Backend calculates:
 ### Backend
 | Technology | Purpose |
 |-----------|---------|
-| FastAPI (Python 3.11) | REST API |
+| FastAPI (Python 3.9) | REST API (gunicorn + uvicorn workers) |
 | SQLAlchemy 2.0 async | ORM |
 | asyncpg | Async PostgreSQL driver |
-| Celery + Redis (Valkey 8) | Background polling every 15 min |
+| Celery + Redis6 | Background polling every 15 min |
 | httpx | Async HTTP for external APIs |
 | Razorpay Python SDK | UPI + IMPS payouts |
+| google-auth | FCM V1 Service Account OAuth2 |
+
+### Infrastructure
+| Component | Service | Region |
+|-----------|---------|--------|
+| API Server | AWS EC2 t3.small | ap-south-2 (Hyderabad) |
+| Database | AWS RDS PostgreSQL | ap-south-2 |
+| Cache / OTP Store | Redis6 on EC2 | ap-south-2 |
+| Push Notifications | Firebase FCM V1 | susanoo-d13b0 |
+| Process Manager | systemctl (susanoo.service) | EC2 |
+| Admin Dashboard | Netlify | Oregon |
 
 ### External APIs
 | API | Purpose | Mode |
@@ -392,8 +412,9 @@ Backend calculates:
 | OpenWeather API | Rain + Heat triggers + GPS weather | Real |
 | OpenWeather Air Pollution API | AQI trigger + GPS AQI | Real |
 | NewsAPI | Civic emergency detection | Real |
-| 2Factor.in | OTP via phone call + payout confirmation | Real |
+| 2Factor.in | OTP via phone call + payout SMS | Real |
 | Razorpay X | UPI + IMPS payouts | Sandbox |
+| Firebase FCM V1 | Push notifications (claim lifecycle) | Real |
 
 ---
 
@@ -412,7 +433,7 @@ Backend calculates:
 └──────────────────────────┬──────────────────────────────────────┘
                            │ HTTPS / REST
 ┌──────────────────────────▼──────────────────────────────────────┐
-│                     FastAPI Backend (Render)                      │
+│                  FastAPI Backend (AWS EC2 ap-south-2)             │
 │                                                                   │
 │  /auth    /workers    /policies    /claims    /disruptions        │
 │  /payouts /actuarial  /location    /admin                         │
@@ -431,8 +452,8 @@ Backend calculates:
 │  └─────────────────────────────────────────────────────────────┘ │
 └──────┬──────────────┬──────────────┬──────────────┬─────────────┘
        │              │              │              │
-  PostgreSQL      Valkey 8      OpenWeather    NewsAPI
-  (Render)        Redis         + AQI API      Civic alerts
+  PostgreSQL      Redis6         OpenWeather    NewsAPI
+  (RDS)           (EC2)          + AQI API      Civic alerts
                                (Real data)    (Real data)
                                     │
                               2Factor.in
@@ -567,23 +588,6 @@ By combining **parametric insurance mechanics**, **hyper-local infrastructure-aw
 - **Fraud-resistant** — GPS anti-spoofing + network-level ring detection
 - **Accessible** — Full English, Tamil, and Hindi support from first screen to last
 - **Scalable** — Celery workers handle city-wide events for thousands of workers simultaneously
-
----
-
-## Recent Activity (Git Log)
-
-```text
-* 3265ce4 feat: add systemd service files for Celery worker and beat scheduler
-* 65f7ca6 fix: use Redis for OTP store to fix multi-worker race condition
-* fb3bdf4 fix: switch Flutter app API URL from Render to AWS EC2
-* 3894ca8 ci: switch backend to AWS EC2 ap-south-2
-* a04ebaa feat: add admin API routes - stats, claims, workers, disruptions
-* 2919f84 Merge pull request #1 from madhan112007/agent-code-9922
-* 985a48d Fix TypeError and 404 error in JavaScript code
-* aece34c ci: trigger redeploy with VITE_API_URL env var
-* 3b8eba2 feat: complete admin dashboard with live API data and lucide-react icons
-* 7eedc36 fix: remove all emojis, replace with Material icons; fix hello greeting i18n
-```
 
 ---
 

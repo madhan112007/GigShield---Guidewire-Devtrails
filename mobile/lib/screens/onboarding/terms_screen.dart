@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -114,7 +113,7 @@ class _TermsScreenState extends ConsumerState<TermsScreen> {
                         children: [
                           const Text('Susanoo',
                               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                          Text('Terms & Conditions',
+                          Text(s.termsAndConditions,
                               style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
                         ],
                       ),
@@ -134,7 +133,7 @@ class _TermsScreenState extends ConsumerState<TermsScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            'Please read and accept all terms before continuing.',
+                            s.pleaseReadTerms,
                             style: TextStyle(fontSize: 12, color: Colors.brown.shade700),
                           ),
                         ),
@@ -226,7 +225,7 @@ class _TermsScreenState extends ConsumerState<TermsScreen> {
                   // Last updated
                   Center(
                     child: Text(
-                      'Last updated: April 2025 • Version 1.0',
+                      s.lastUpdated,
                       style: TextStyle(fontSize: 11, color: AppTheme.textHint),
                     ),
                   ),
@@ -236,23 +235,19 @@ class _TermsScreenState extends ConsumerState<TermsScreen> {
                   _ConsentCheckbox(
                     value: _acceptedTerms,
                     onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
-                    text: 'I have read and agree to the ',
-                    linkText: 'Terms of Service & Insurance Policy Terms',
+                    text: s.acceptTermsOfService,
                   ),
                   const SizedBox(height: 12),
                   _ConsentCheckbox(
                     value: _acceptedPrivacy,
                     onChanged: (v) => setState(() => _acceptedPrivacy = v ?? false),
-                    text: 'I have read and agree to the ',
-                    linkText: 'Privacy Policy',
+                    text: s.acceptPrivacyPolicy,
                   ),
                   const SizedBox(height: 12),
                   _ConsentCheckbox(
                     value: _acceptedDataConsent,
                     onChanged: (v) => setState(() => _acceptedDataConsent = v ?? false),
-                    text: 'I consent to ',
-                    linkText: 'location access and data processing',
-                    suffix: ' as described above.',
+                    text: s.acceptDataConsent,
                   ),
                   const SizedBox(height: 28),
                 ],
@@ -280,7 +275,7 @@ class _TermsScreenState extends ConsumerState<TermsScreen> {
                         children: [
                           Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppTheme.textHint),
                           const SizedBox(width: 4),
-                          Text('Scroll down to read all terms',
+                          Text(s.scrollToRead,
                               style: TextStyle(fontSize: 12, color: AppTheme.textHint)),
                         ],
                       ),
@@ -301,7 +296,7 @@ class _TermsScreenState extends ConsumerState<TermsScreen> {
                           const Icon(Icons.check_circle_rounded, size: 20, color: Colors.white),
                           const SizedBox(width: 8),
                           Text(
-                            allAccepted ? 'Accept & Continue' : 'Accept All Terms to Continue',
+                            allAccepted ? s.acceptAndContinue : s.acceptAllToContinue,
                             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
                           ),
                         ],
@@ -310,7 +305,7 @@ class _TermsScreenState extends ConsumerState<TermsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'By continuing, you confirm you are 18+ and an active gig worker.',
+                    s.confirmAge,
                     style: TextStyle(fontSize: 11, color: AppTheme.textHint),
                     textAlign: TextAlign.center,
                   ),
@@ -422,14 +417,10 @@ class _ConsentCheckbox extends StatelessWidget {
   final bool value;
   final ValueChanged<bool?> onChanged;
   final String text;
-  final String linkText;
-  final String suffix;
   const _ConsentCheckbox({
     required this.value,
     required this.onChanged,
     required this.text,
-    required this.linkText,
-    this.suffix = '',
   });
 
   @override
@@ -460,23 +451,9 @@ class _ConsentCheckbox extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.5),
-                children: [
-                  TextSpan(text: text),
-                  TextSpan(
-                    text: linkText,
-                    style: const TextStyle(
-                      color: AppTheme.primary,
-                      fontWeight: FontWeight.w600,
-                      decoration: TextDecoration.underline,
-                    ),
-                    recognizer: TapGestureRecognizer()..onTap = () {},
-                  ),
-                  if (suffix.isNotEmpty) TextSpan(text: suffix),
-                ],
-              ),
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.5),
             ),
           ),
         ],

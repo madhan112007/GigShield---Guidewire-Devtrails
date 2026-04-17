@@ -9,7 +9,8 @@
     "recharts": "^2.12.7",
     "axios": "^1.7.2",
     "date-fns": "^3.6.0",
-    "lucide-react": "^0.395.0"
+    "lucide-react": "^0.395.0",
+    "framer-motion": "^11.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.0",

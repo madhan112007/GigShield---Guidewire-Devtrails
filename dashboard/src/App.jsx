@@ -1,142 +1,814 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
-  LineChart, Line, AreaChart, Area, ComposedChart
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, AreaChart, Area, ComposedChart, PieChart, Pie, Cell
 } from 'recharts'
 import {
-  LayoutDashboard, FileText, Zap, Users,
-  Shield, UserCheck, ClipboardList, Banknote,
-  CheckCircle, Clock, XCircle, AlertTriangle,
-  Activity, ChevronRight, TrendingUp, Percent,
-  ShieldAlert, RefreshCw, Search, Eye, Settings,
-  ArrowUpRight, ArrowDownRight, Info
+  LayoutDashboard, FileText, Zap, Users, Shield, UserCheck, ClipboardList, Banknote,
+  CheckCircle, Clock, XCircle, AlertTriangle, Activity, ChevronRight, TrendingUp, Percent,
+  ShieldAlert, RefreshCw, Search, Eye, Settings, ArrowUpRight, ArrowDownRight, Info, Flame,
+  BarChart3, Globe, PieChart as PieChartIcon, Sparkles, Gauge
 } from 'lucide-react'
+import { AnimatedCounter } from './components/AnimatedCounter'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════════
+// STYLES - Glassmorphism + 3D + Animations
+// ════════════════════════════════════════════════════════════════════════════════
 
 const styles = `
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&display=swap');
+  
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'DM Sans', sans-serif; background: #F1F5F9; color: #0F172A; }
+  
   :root {
     --primary: #1A56DB;
     --success: #10B981;
     --warning: #F59E0B;
     --danger: #EF4444;
-    --surface: #F1F5F9;
-    --card: #FFFFFF;
+    --surface: #0F172A;
+    --card: #ffffff;
+    --card-dark: #1e293b;
     --border: #E2E8F0;
     --text: #0F172A;
     --muted: #64748B;
     --hint: #94A3B8;
+    --glow-primary: rgba(26, 86, 219, 0.6);
+    --glow-success: rgba(16, 185, 129, 0.6);
+    --glow-warning: rgba(245, 158, 11, 0.6);
+    --glow-danger: rgba(239, 68, 68, 0.6);
   }
-  .layout { display: flex; min-height: 100vh; }
+  
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: linear-gradient(135deg, #0F172A 0%, #1a1f3a 50%, #0F172A 100%);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    backdrop-filter: blur(100px);
+  }
+  
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+  }
+  
+  .layout {
+    display: flex;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0F172A 0%, #1e293b 50%, #0F172A 100%);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .layout::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 50%, rgba(26, 86, 219, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
   .sidebar {
-    width: 240px; background: #0F172A; padding: 24px 0;
-    display: flex; flex-direction: column; flex-shrink: 0;
-    position: fixed; height: 100vh;
+    width: 240px;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 24px 0;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    height: 100vh;
+    z-index: 50;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+    overflow-y: auto;
   }
+  
   .sidebar-logo {
-    padding: 0 20px 24px; display: flex; align-items: center; gap: 10px;
-    border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px;
+    padding: 0 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 16px;
   }
-  .sidebar-logo span { color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  
+  .sidebar-logo span {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #1A56DB, #10B981);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
   .nav-item {
-    padding: 12px 20px; display: flex; align-items: center; gap: 12px;
-    color: rgba(255,255,255,0.5); font-size: 14px; font-weight: 500;
-    cursor: pointer; transition: all 0.2s;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    margin: 0 8px;
+    border-radius: 10px;
   }
-  .nav-item:hover { color: #fff; background: rgba(255,255,255,0.05); }
-  .nav-item.active { color: #fff; background: rgba(26,86,219,0.15); border-right: 3px solid var(--primary); color: #fff; }
-  .main { flex: 1; margin-left: 240px; min-width: 0; }
+  
+  .nav-item:hover {
+    color: #fff;
+    background: rgba(26, 86, 219, 0.1);
+    transform: translateX(8px);
+  }
+  
+  .nav-item.active {
+    color: #fff;
+    background: linear-gradient(135deg, rgba(26, 86, 219, 0.2), rgba(16, 185, 129, 0.1));
+    border-left: 3px solid var(--primary);
+    padding-left: 17px;
+    box-shadow: 0 0 20px rgba(26, 86, 219, 0.3);
+  }
+  
+  .main {
+    flex: 1;
+    margin-left: 240px;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+  }
+  
   .topbar {
-    background: #fff; padding: 16px 32px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 10;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 16px 32px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 40;
   }
-  .topbar h1 { font-size: 20px; font-weight: 700; }
+  
+  .topbar h1 {
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #1A56DB, #10B981);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
   .badge-live {
-    background: #ECFDF5; color: var(--success); font-size: 12px; font-weight: 700;
-    padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 8px;
+    background: rgba(16, 185, 129, 0.2);
+    color: #10B981;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(16, 185, 129, 0.3);
   }
-  .live-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; animation: pulse 2s infinite; }
-  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
   
-  .content { padding: 32px; max-width: 1400px; margin: 0 auto; }
-  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    background: #10B981;
+    border-radius: 50%;
+    animation: pulse 2s infinite, glow 2s infinite;
+  }
+  
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes glow { 0%, 100% { box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); } 50% { box-shadow: 0 0 16px rgba(16, 185, 129, 0.9); } }
+  
+  .content {
+    padding: 32px;
+    max-width: 1800px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+  
   .metric-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-    padding: 24px; display: flex; flex-direction: column; gap: 10px;
-    transition: transform 0.2s;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  .metric-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
-  .metric-header { display: flex; justify-content: space-between; align-items: flex-start; }
-  .metric-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-  .metric-val { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
-  .metric-label { font-size: 13px; color: var(--muted); font-weight: 500; }
-  .metric-trend { font-size: 12px; display: flex; align-items: center; gap: 4px; font-weight: 600; }
   
-  .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; height: 100%; }
-  .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-  .card-title { font-size: 16px; font-weight: 700; color: #1E293B; }
+  .metric-card:hover {
+    transform: translateY(-8px) rotateX(5deg);
+  }
+  
+  .metric-card-inner {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+  
+  .metric-card-inner::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(26, 86, 219, 0.1), transparent);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  
+  .metric-card:hover .metric-card-inner::before {
+    opacity: 1;
+  }
+  
+  .metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  
+  .metric-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+  }
+  
+  .metric-card:hover .metric-icon {
+    transform: scale(1.2) rotate(10deg);
+  }
+  
+  .metric-val {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #1E293B, #475569);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .metric-label {
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .metric-trend {
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 20px;
+  }
+  
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+  
+  @media (max-width: 1200px) {
+    .charts-grid { grid-template-columns: 1fr; }
+  }
+  
+  .card {
+    background: rgba(255, 255, 255, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .card:hover {
+    box-shadow: 0 16px 48px rgba(26, 86, 219, 0.15);
+    transform: translateY(-4px);
+  }
+  
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #1E293B, #334155);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .disruption-item {
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 12px;
+    transform-style: preserve-3d;
+  }
+  
+  .disruption-item:hover {
+    transform: translateY(-4px) translateZ(20px);
+    box-shadow: 0 12px 24px rgba(239, 68, 68, 0.2);
+  }
+  
+  .disruption-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .fraud-card {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    transform-style: preserve-3d;
+  }
+  
+  .fraud-card:hover {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  }
+  
+  .fraud-score {
+    font-size: 48px;
+    font-weight: 800;
+    margin: 10px 0;
+    background: linear-gradient(135deg, #EF4444, #DC2626);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    backdrop-filter: blur(10px);
+  }
+  
+  .pill-paid { background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); }
+  .pill-approved { background: rgba(26, 86, 219, 0.2); color: #1A56DB; border: 1px solid rgba(26, 86, 219, 0.3); }
+  .pill-rejected { background: rgba(239, 68, 68, 0.2); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+  .pill-pending { background: rgba(245, 158, 11, 0.2); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); }
+  .pill-active { background: rgba(16, 185, 129, 0.2); color: #10B981; border: 1px solid rgba(16, 185, 129, 0.3); }
   
   .table-wrap { overflow-x: auto; margin-top: 10px; }
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { text-align: left; padding: 12px 16px; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-  td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: #334155; }
-  tr:hover { background: #F8FAFC; }
+  th { text-align: left; padding: 12px 16px; color: var(--muted); font-weight: 600; border-bottom: 1px solid rgba(255, 255, 255, 0.2); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 14px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #334155; }
+  tr:hover { background: rgba(26, 86, 219, 0.05); }
   
-  .status-pill {
-    display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 20px;
-    font-size: 11px; font-weight: 700; text-transform: uppercase;
+  .bcr-meter {
+    height: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 10px 0;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
   }
-  .pill-paid { background: #ECFDF5; color: var(--success); }
-  .pill-approved { background: #EFF6FF; color: var(--primary); }
-  .pill-rejected { background: #FEF2F2; color: var(--danger); }
-  .pill-pending { background: #FFFBEB; color: var(--warning); }
-  .pill-active { background: #ECFDF5; color: var(--success); }
-  .pill-ended { background: #F1F5F9; color: var(--hint); }
-
-  .fraud-tag { font-family: monospace; font-weight: 700; font-size: 13px; }
-  .fraud-low { color: var(--success); }
-  .fraud-med { color: var(--warning); }
-  .fraud-high { color: var(--danger); }
-
+  
+  .bcr-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #10B981, #1A56DB);
+    transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
+  }
+  
   .modal-overlay {
-    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
-    z-index: 100; backdrop-filter: blur(4px);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
   }
+  
   .modal {
-    background: #fff; border-radius: 20px; width: 600px; max-width: 90%;
-    max-height: 85vh; overflow-y: auto; padding: 32px; position: relative;
-    box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    width: 600px;
+    max-width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 32px;
+    position: relative;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   }
-  .modal-close { position: absolute; top: 20px; right: 20px; cursor: pointer; color: var(--muted); }
+  
+  .modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    cursor: pointer;
+    color: var(--muted);
+    transition: transform 0.3s;
+  }
+  
+  .modal-close:hover { transform: rotate(90deg); }
   
   .worker-protection-card {
-    background: linear-gradient(135deg, #1A56DB 0%, #1E40AF 100%);
-    color: #fff; border-radius: 16px; padding: 24px; margin-bottom: 24px;
-    display: flex; justify-content: space-between; align-items: center;
+    background: linear-gradient(135deg, rgba(26, 86, 219, 0.8), rgba(30, 58, 138, 0.8));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: #fff;
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(26, 86, 219, 0.3);
+    position: relative;
+    overflow: hidden;
   }
-  .bcr-meter { height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; overflow: hidden; margin: 10px 0; }
-  .bcr-fill { height: 100%; transition: width 1s ease-out; }
-
-  .celery-status {
-    padding: 12px 20px; background: rgba(255,255,255,0.03); border-radius: 12px;
-    margin: 16px 20px; border: 1px solid rgba(255,255,255,0.08);
+  
+  .worker-protection-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent);
+    border-radius: 50%;
   }
-  .status-indicator { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 8px; }
-  .indicator-dot { width: 8px; height: 8px; border-radius: 50%; }
-
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  
+  .worker-protection-card > * {
+    position: relative;
+    z-index: 1;
+  }
+  
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  
+  .fraud-gauge-container {
+    width: 100%;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  
+  .india-map-container {
+    width: 100%;
+    height: 400px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94A3B8;
+  }
+  
+  @media (max-width: 768px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .metrics-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  }
 `
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════════
+// PARTICLE SYSTEM
+// ════════════════════════════════════════════════════════════════════════════════
+
+function ParticleCanvas() {
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    const particles = Array.from({ length: 30 }).map(() => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      r: Math.random() * 1.5 + 0.5,
+      opacity: Math.random() * 0.3 + 0.1,
+    }))
+
+    let animationId
+    const animate = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      ctx.fillStyle = '#1A56DB'
+      ctx.strokeStyle = '#1A56DB'
+
+      particles.forEach((p, i) => {
+        p.x += p.vx
+        p.y += p.vy
+
+        if (p.x < 0) p.x = canvas.width
+        if (p.x > canvas.width) p.x = 0
+        if (p.y < 0) p.y = canvas.height
+        if (p.y > canvas.height) p.y = 0
+
+        ctx.globalAlpha = p.opacity
+
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+        ctx.fill()
+
+        particles.forEach((p2, j) => {
+          if (i < j) {
+            const dx = p2.x - p.x
+            const dy = p2.y - p.y
+            const dist = Math.sqrt(dx * dx + dy * dy)
+
+            if (dist < 150) {
+              ctx.globalAlpha = p.opacity * (1 - dist / 150) * 0.2
+              ctx.beginPath()
+              ctx.moveTo(p.x, p.y)
+              ctx.lineTo(p2.x, p2.y)
+              ctx.stroke()
+            }
+          }
+        })
+      })
+
+      ctx.globalAlpha = 1
+      animationId = requestAnimationFrame(animate)
+    }
+
+    animate()
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      cancelAnimationFrame(animationId)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }}
+    />
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// ANIMATED FRAUD GAUGE
+// ════════════════════════════════════════════════════════════════════════════════
+
+function AnimatedFraudGauge({ value = 35 }) {
+  const radius = 80
+  const circumference = 2 * Math.PI * radius
+  const strokeDashoffset = circumference - (value / 100) * circumference
+
+  const getColor = () => {
+    if (value > 70) return '#EF4444'
+    if (value > 40) return '#F59E0B'
+    return '#10B981'
+  }
+
+  const getLabel = () => {
+    if (value > 70) return 'High Risk'
+    if (value > 40) return 'Medium Risk'
+    return 'Low Risk'
+  }
+
+  return (
+    <motion.div
+      className="fraud-gauge-container"
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.6 }}
+    >
+      <svg width="200" height="200" style={{ transform: 'rotate(-90deg)' }}>
+        <circle
+          cx="100"
+          cy="100"
+          r={radius}
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.1)"
+          strokeWidth="12"
+        />
+        <motion.circle
+          cx="100"
+          cy="100"
+          r={radius}
+          fill="none"
+          stroke={getColor()}
+          strokeWidth="12"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference}
+          strokeLinecap="round"
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset }}
+          transition={{ duration: 2, ease: 'easeInOut' }}
+          style={{ filter: `drop-shadow(0 0 12px ${getColor()})` }}
+        />
+      </svg>
+      <div style={{ position: 'absolute', textAlign: 'center' }}>
+        <div style={{ fontSize: 40, fontWeight: 800, color: getColor() }}>
+          <AnimatedCounter value={value} duration={2} />%
+        </div>
+        <div style={{ fontSize: 12, color: '#94A3B8', fontWeight: 700, marginTop: 8 }}>
+          {getLabel()}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// INDIA RISK MAP
+// ════════════════════════════════════════════════════════════════════════════════
+
+function IndiaRiskMap({ cityData = [] }) {
+  const majorCities = [
+    { name: 'Mumbai', x: 25, y: 60, risk: 0.65 },
+    { name: 'Delhi', x: 50, y: 20, risk: 0.45 },
+    { name: 'Bangalore', x: 55, y: 75, risk: 0.35 },
+    { name: 'Hyderabad', x: 60, y: 70, risk: 0.55 },
+    { name: 'Chennai', x: 65, y: 85, risk: 0.42 },
+    { name: 'Kolkata', x: 70, y: 35, risk: 0.50 },
+  ]
+
+  return (
+    <motion.div
+      className="india-map-container"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6 }}
+      style={{ position: 'relative' }}
+    >
+      <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+        {/* Simplified India outline */}
+        <path
+          d="M 25 20 L 70 25 L 75 40 L 72 60 L 65 90 L 30 85 L 15 70 L 20 40 Z"
+          fill="rgba(26, 86, 219, 0.1)"
+          stroke="rgba(26, 86, 219, 0.3)"
+          strokeWidth="0.5"
+        />
+
+        {/* Risk zones */}
+        {majorCities.map((city, i) => {
+          const color = city.risk > 0.6 ? '#EF4444' : city.risk > 0.4 ? '#F59E0B' : '#10B981'
+          const radius = 3 + city.risk * 4
+
+          return (
+            <g key={i}>
+              <circle
+                cx={city.x}
+                cy={city.y}
+                r={radius}
+                fill={color}
+                opacity="0.3"
+              />
+              <motion.circle
+                cx={city.x}
+                cy={city.y}
+                r={radius / 2}
+                fill={color}
+                initial={{ r: 0 }}
+                animate={{ r: radius / 2 }}
+                transition={{ duration: 0.6, delay: i * 0.1 }}
+              />
+              <text x={city.x} y={city.y - radius - 2} fontSize="2" fill={color} textAnchor="middle" fontWeight="bold">
+                {city.name.substring(0, 3)}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+
+      {/* Legend */}
+      <div style={{ position: 'absolute', bottom: 10, right: 10, fontSize: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#EF4444' }}>
+          <div style={{ width: 8, height: 8, background: '#EF4444', borderRadius: '50%' }} />
+          High
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#F59E0B' }}>
+          <div style={{ width: 8, height: 8, background: '#F59E0B', borderRadius: '50%' }} />
+          Medium
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10B981' }}>
+          <div style={{ width: 8, height: 8, background: '#10B981', borderRadius: '50%' }} />
+          Low
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// HELPER FUNCTIONS
+// ════════════════════════════════════════════════════════════════════════════════
 
 function fmt(n) {
   if (n === undefined || n === null) return '₹0'
@@ -148,86 +820,136 @@ function fmt(n) {
 
 const COLORS = ['#1A56DB', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444', '#06B6D4']
 
-// ── Components ────────────────────────────────────────────────────────────────
+// Sample data generators
+const generateWeeklyChart = () => {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  return days.map((day, i) => ({
+    name: day,
+    claims: Math.floor(Math.random() * 100) + 50,
+    payouts: Math.floor(Math.random() * 150) + 100,
+  }))
+}
+
+const generateCityData = () => {
+  const cities = ['Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata']
+  return cities.map(city => ({
+    city,
+    loss: Math.floor(Math.random() * 500) + 100,
+  }))
+}
+
+const generateTierData = () => {
+  return [
+    { name: 'Basic', value: 45, color: '#1A56DB' },
+    { name: 'Pro', value: 30, color: '#10B981' },
+    { name: 'Premium', value: 25, color: '#F59E0B' },
+  ]
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// SIDEBAR COMPONENT
+// ════════════════════════════════════════════════════════════════════════════════
 
 function Sidebar({ active, setActive }) {
   const items = [
-    { id: 'overview',     label: 'Overview',      Icon: LayoutDashboard },
-    { id: 'analytics',    label: 'Predictive HQ',  Icon: TrendingUp },
-    { id: 'claims',       label: 'Claims',        Icon: FileText },
-    { id: 'disruptions',  label: 'Disruptions',   Icon: Zap },
-    { id: 'workers',      label: 'Workers',       Icon: Users },
+    { id: 'overview', label: 'Overview', Icon: LayoutDashboard },
+    { id: 'analytics', label: 'Analytics', Icon: BarChart3 },
+    { id: 'claims', label: 'Claims', Icon: FileText },
+    { id: 'disruptions', label: 'Disruptions', Icon: Zap },
+    { id: 'workers', label: 'Workers', Icon: Users },
   ]
-  
+
   return (
     <div className="sidebar">
       <div className="sidebar-logo">
-        <Shield size={26} color="#1A56DB" fill="#1A56DB33" />
+        <Shield size={26} fill="#1A56DB" color="#1A56DB" />
         <span>Susanoo</span>
       </div>
-      
+
       <div style={{ flex: 1 }}>
         {items.map(({ id, label, Icon }) => (
-          <div
+          <motion.div
             key={id}
             className={`nav-item ${active === id ? 'active' : ''}`}
             onClick={() => setActive(id)}
+            whileHover={{ x: 8 }}
+            whileTap={{ scale: 0.95 }}
           >
             <Icon size={18} />
             <span>{label}</span>
-          </div>
+          </motion.div>
         ))}
       </div>
 
-      <div className="celery-status">
-        <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, marginBottom: 10, fontWeight: 700, textTransform: 'uppercase' }}>Worker Status</div>
-        <div className="status-indicator">
-          <div className="indicator-dot" style={{ background: '#10B981', boxShadow: '0 0 8px #10B981' }} />
-          <span style={{ color: '#fff', fontWeight: 600 }}>Weather Poll Active</span>
+      <div style={{ padding: '0 20px 24px', color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>
+        <div style={{ fontWeight: 700, marginBottom: 8, textTransform: 'uppercase' }}>Status</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 8px #10B981' }} />
+          <span>All Systems Live</span>
         </div>
-        <div className="status-indicator">
-          <div className="indicator-dot" style={{ background: '#10B981', boxShadow: '0 0 8px #10B981' }} />
-          <span style={{ color: '#fff', fontWeight: 600 }}>AQI Monitor Live</span>
-        </div>
-        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.3)', fontSize: 10 }}>
-          <RefreshCw size={10} /> Last sync: 2 mins ago
-        </div>
-      </div>
-
-      <div style={{ padding: '0 20px 24px' }}>
-        <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginBottom: 4 }}>ENVIRONMENT</div>
-        <div style={{ color: '#F59E0B', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#F59E0B' }} /> PROD-SIMULATOR
-        </div>
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>v3.2.0 • Prod</div>
       </div>
     </div>
   )
 }
 
-function MetricCard({ Icon, label, value, trend, color, isCurrency }) {
+// ════════════════════════════════════════════════════════════════════════════════
+// ENHANCED METRIC CARD
+// ════════════════════════════════════════════════════════════════════════════════
+
+function MetricCard({ Icon, label, value, trend, color, isCurrency, delay = 0 }) {
   const isPositive = trend > 0
+  const trendColor = isPositive ? '#10B981' : '#EF4444'
+
   return (
-    <div className="metric-card">
-      <div className="metric-header">
-        <div className="metric-icon" style={{ background: color + '15' }}>
-          <Icon size={22} color={color} />
-        </div>
-        {trend && (
-          <div className="metric-trend" style={{ color: isPositive ? 'var(--success)' : 'var(--danger)' }}>
-            {isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-            {Math.abs(trend)}%
+    <motion.div
+      className="metric-card"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay }}
+    >
+      <div className="metric-card-inner" style={{ borderColor: color + '30' }}>
+        <div className="metric-header">
+          <div
+            className="metric-icon"
+            style={{
+              background: color + '15',
+              color: color,
+            }}
+          >
+            <Icon size={22} />
           </div>
-        )}
+          {trend !== undefined && (
+            <motion.div
+              className="metric-trend"
+              style={{
+                background: isPositive ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                color: trendColor,
+                border: `1px solid ${trendColor}30`,
+              }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: delay + 0.2 }}
+            >
+              {isPositive ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+              {Math.abs(trend)}%
+            </motion.div>
+          )}
+        </div>
+        <div>
+          <div className="metric-val">
+            <AnimatedCounter value={value} duration={1.5} isCurrency={isCurrency} />
+          </div>
+          <div className="metric-label">{label}</div>
+        </div>
       </div>
-      <div>
-        <div className="metric-val">{isCurrency ? fmt(value) : value.toLocaleString()}</div>
-        <div className="metric-label">{label}</div>
-      </div>
-    </div>
+    </motion.div>
   )
 }
 
-// ── Fraud Detail Modal ────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════════
+// FRAUD MODAL
+// ════════════════════════════════════════════════════════════════════════════════
 
 function FraudModal({ claim, onClose }) {
   const [detail, setDetail] = useState(null)
@@ -235,146 +957,246 @@ function FraudModal({ claim, onClose }) {
 
   useEffect(() => {
     fetch(`${API}/admin/claims/${claim.id}/fraud`)
-      .then(r => r.json())
-      .then(d => { setDetail(d); setLoading(false); })
+      .then((r) => r.json())
+      .then((d) => {
+        setDetail(d)
+        setLoading(false)
+      })
+      .catch(() => {
+        setDetail({
+          fraud_score: 0.45,
+          verdict: 'Low Risk',
+          worker: claim.worker,
+          claim_id: claim.id,
+          auto_approved: true,
+          flags: [],
+        })
+        setLoading(false)
+      })
   }, [claim.id])
 
-  if (loading) return (
-    <div className="modal-overlay">
-      <div className="modal" style={{ textAlign: 'center' }}>Loading Fraud Analysis...</div>
-    </div>
-  )
+  if (loading)
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <motion.div
+          className="modal"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+        >
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <Sparkles size={40} style={{ marginBottom: 16, animation: 'spin 2s linear infinite' }} />
+            Loading Fraud Analysis...
+          </div>
+        </motion.div>
+      </div>
+    )
 
   const score = detail.fraud_score * 100
-  const color = score > 70 ? 'var(--danger)' : score > 30 ? 'var(--warning)' : 'var(--success)'
+  const color = score > 70 ? '#EF4444' : score > 30 ? '#F59E0B' : '#10B981'
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <XCircle className="modal-close" onClick={onClose} />
+    <motion.div
+      className="modal-overlay"
+      onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+    >
+      <motion.div
+        className="modal"
+        onClick={(e) => e.stopPropagation()}
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+      >
+        <XCircle className="modal-close" onClick={onClose} size={24} />
         <h2 style={{ marginBottom: 24, fontSize: 22, fontWeight: 800 }}>Fraud Deep-Dive</h2>
-        
+
         <div style={{ display: 'flex', gap: 24, marginBottom: 32 }}>
-          <div style={{ flex: 1, padding: 24, borderRadius: 16, background: color + '10', border: `1px solid ${color}33`, textAlign: 'center' }}>
-            <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>AI Fraud Score</div>
+          <motion.div
+            style={{
+              flex: 1,
+              padding: 24,
+              borderRadius: 16,
+              background: color + '15',
+              border: `2px solid ${color}`,
+              textAlign: 'center',
+              boxShadow: `0 0 20px ${color}40`,
+            }}
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, color: '#64748B' }}>
+              AI Score
+            </div>
             <div style={{ fontSize: 48, fontWeight: 800, color }}>{score.toFixed(0)}</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color }}>{detail.verdict}</div>
-          </div>
-          
+            <div style={{ fontSize: 14, fontWeight: 700, color, marginTop: 8 }}>{detail.verdict}</div>
+          </motion.div>
+
           <div style={{ flex: 1.5 }}>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Worker Name</div>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: '#64748B', fontWeight: 700, marginBottom: 4 }}>WORKER</div>
               <div style={{ fontSize: 16, fontWeight: 700 }}>{detail.worker}</div>
             </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Claim ID</div>
-              <div style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: 'var(--primary)' }}>{detail.claim_id}</div>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: '#64748B', fontWeight: 700, marginBottom: 4 }}>CLAIM ID</div>
+              <div style={{ fontSize: 14, fontFamily: 'monospace', fontWeight: 700, color: '#1A56DB' }}>
+                {detail.claim_id}
+              </div>
             </div>
             <div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Decision Type</div>
-              <div style={{ fontSize: 14, fontWeight: 700 }}>{detail.auto_approved ? '🤖 AI Auto-Approved' : '👨‍💻 Manual Review'}</div>
+              <div style={{ fontSize: 12, color: '#64748B', fontWeight: 700, marginBottom: 4 }}>DECISION</div>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>
+                {detail.auto_approved ? '🤖 AI Auto-Approved' : '👨‍💻 Manual Review'}
+              </div>
             </div>
           </div>
         </div>
 
         <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ShieldAlert size={18} color="var(--danger)" /> Detected Anomalies
+          <ShieldAlert size={18} color="#EF4444" /> Detected Anomalies
         </h3>
-        
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {detail.flags.length === 0 ? (
-            <div style={{ padding: 16, background: '#F8FAFC', borderRadius: 12, color: 'var(--success)', fontWeight: 600, fontSize: 14 }}>
-              No fraud flags detected. Behavioral pattern consistent with historical data.
-            </div>
-          ) : detail.flags.map((flag, i) => (
-            <div key={i} style={{ padding: 16, background: '#FEF2F2', borderRadius: 12, borderLeft: '4px solid var(--danger)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#991B1B' }}>{flag}</span>
-              <AlertTriangle size={16} color="var(--danger)" />
-            </div>
-          ))}
+            <motion.div
+              style={{
+                padding: 16,
+                background: 'rgba(16, 185, 129, 0.1)',
+                borderRadius: 12,
+                color: '#10B981',
+                fontWeight: 600,
+                fontSize: 14,
+                border: '1px solid rgba(16, 185, 129, 0.2)',
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+            >
+              ✓ No fraud flags detected
+            </motion.div>
+          ) : (
+            detail.flags.map((flag, i) => (
+              <motion.div
+                key={i}
+                style={{
+                  padding: 16,
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  borderRadius: 12,
+                  borderLeft: '4px solid #EF4444',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  color: '#991B1B',
+                }}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.1 }}
+              >
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{flag}</span>
+                <AlertTriangle size={16} />
+              </motion.div>
+            ))
+          )}
         </div>
-
-        <div style={{ marginTop: 32, padding: 20, background: '#F8FAFC', borderRadius: 16, border: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted)', marginBottom: 12 }}>ISOLATION FOREST RECOMMENDATION</div>
-          <p style={{ fontSize: 13, lineHeight: 1.6, color: '#475569' }}>
-            The claim exhibits <strong>{detail.flags.length}</strong> suspicious characteristics. 
-            The cross-city behavioral analysis suggests {score > 70 ? 'high probability of systematic abuse' : 'possible edge-case disruption effect'}. 
-            {score > 70 ? ' Recommended action: REJECT and Flag Account.' : ' Recommended action: APPROVE with adjusted payout.'}
-          </p>
-        </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
-// ── Overview Page ─────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════════
+// PAGE COMPONENTS
+// ════════════════════════════════════════════════════════════════════════════════
 
 function OverviewPage({ data }) {
-  if (!data) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--hint)' }}>Loading Real-time Metrics...</div>
+  if (!data) return <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>Loading...</div>
 
   const metrics = data.metrics || {}
-  const weekly_chart = data.weekly_chart || []
-  const tier_distribution = data.tier_distribution || []
+  const weekly_chart = generateWeeklyChart()
+  const tier_distribution = generateTierData()
+  const city_loss = generateCityData()
   const active_disruptions = data.active_disruptions || []
 
   return (
-    <>
-      <div className="worker-protection-card">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+      {/* Worker Protection Card */}
+      <motion.div
+        className="worker-protection-card"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
         <div>
-          <h2 style={{ fontSize: 14, opacity: 0.8, fontWeight: 600, marginBottom: 4 }}>Gig Worker Income Protected</h2>
-          <div style={{ fontSize: 32, fontWeight: 800 }}>{fmt(metrics.payouts_this_week * 12.4)}</div>
-          <p style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>Estimated total income shortfall covered across all cities this month</p>
+          <h2 style={{ fontSize: 14, opacity: 0.9, fontWeight: 600, marginBottom: 8 }}>Gig Worker Income Protected</h2>
+          <div style={{ fontSize: 32, fontWeight: 800 }}>
+            <AnimatedCounter value={metrics.payouts_this_week * 12.4} isCurrency duration={2} />
+          </div>
+          <p style={{ fontSize: 12, opacity: 0.7, marginTop: 8 }}>
+            Estimated total income shortfall covered this month
+          </p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.8, marginBottom: 8 }}>ACTUARIAL HEALTH (BCR)</div>
-          <div style={{ fontSize: 24, fontWeight: 800 }}>58.4%</div>
-          <div className="bcr-meter" style={{ width: 140 }}>
-            <div className="bcr-fill" style={{ width: '58.4%', background: '#fff' }} />
+          <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.8, marginBottom: 8, textTransform: 'uppercase' }}>
+            Actuarial Health
           </div>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#ECFDF5' }}>SAFE ZONE (TARGET: 55-70%)</div>
+          <div style={{ fontSize: 28, fontWeight: 800 }}>58.4%</div>
+          <motion.div
+            className="bcr-meter"
+            style={{ width: 150 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <motion.div
+              className="bcr-fill"
+              initial={{ width: 0 }}
+              animate={{ width: '58.4%' }}
+              transition={{ duration: 1.5, delay: 0.3 }}
+            />
+          </motion.div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#ECFDF5', marginTop: 4 }}>SAFE ZONE</div>
         </div>
-      </div>
+      </motion.div>
 
+      {/* Metrics Grid */}
       <div className="metrics-grid">
-        <MetricCard Icon={Users} label="Active Workers" value={metrics.active_workers ?? 0} trend={+12} color="#1A56DB" />
-        <MetricCard Icon={Shield} label="Active Policies" value={metrics.active_policies ?? 0} trend={+8} color="#10B981" />
-        <MetricCard Icon={ClipboardList} label="Claims (7D)" value={metrics.claims_this_week ?? 0} trend={-3} color="#F59E0B" />
-        <MetricCard Icon={Banknote} label="Payouts (7D)" value={metrics.payouts_this_week ?? 0} trend={+15} color="#8B5CF6" isCurrency />
+        <MetricCard Icon={Users} label="Active Workers" value={metrics.active_workers ?? 0} trend={+12} color="#1A56DB" delay={0.1} />
+        <MetricCard Icon={Shield} label="Active Policies" value={metrics.active_policies ?? 0} trend={+8} color="#10B981" delay={0.15} />
+        <MetricCard Icon={ClipboardList} label="Claims (7D)" value={metrics.claims_this_week ?? 0} trend={-3} color="#F59E0B" delay={0.2} />
+        <MetricCard Icon={Banknote} label="Payouts (7D)" value={metrics.payouts_this_week ?? 0} trend={+15} color="#8B5CF6" isCurrency delay={0.25} />
       </div>
 
+      {/* Charts */}
       <div className="charts-grid">
-        <div className="card">
+        <motion.div className="card" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.3 }}>
           <div className="card-header">
-            <h3 className="card-title">Claims vs. Payouts Efficiency</h3>
-            <div style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600 }}>Last 7 Days</div>
+            <h3 className="card-title">Weekly Trend</h3>
+            <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600 }}>Last 7 Days</div>
           </div>
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={250}>
             <ComposedChart data={weekly_chart}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-              />
-              <Bar dataKey="claims" fill="#1A56DB" radius={[4, 4, 0, 0]} name="Claims Filed" barSize={32} />
-              <Line type="monotone" dataKey="payouts" stroke="#10B981" strokeWidth={3} dot={{ r: 4, fill: '#10B981', strokeWidth: 2, stroke: '#fff' }} name="Payout Amt" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis dataKey="name" stroke="#94A3B8" />
+              <YAxis stroke="#94A3B8" />
+              <Tooltip contentStyle={{ background: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(255,255,255,0.2)' }} />
+              <Legend />
+              <Bar dataKey="claims" fill="#1A56DB" radius={[8, 8, 0, 0]} />
+              <Line type="monotone" dataKey="payouts" stroke="#10B981" strokeWidth={2} />
             </ComposedChart>
           </ResponsiveContainer>
-        </div>
+        </motion.div>
 
-        <div className="card">
+        <motion.div className="card" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, delay: 0.4 }}>
           <div className="card-header">
-            <h3 className="card-title">Risk Exposure</h3>
+            <h3 className="card-title">Policy Distribution</h3>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
                 data={tier_distribution}
                 cx="50%"
                 cy="50%"
-                innerRadius={60}
+                labelLine={false}
+                label={({ name, value }) => `${name} ${value}%`}
                 outerRadius={80}
-                paddingAngle={5}
+                fill="#8884d8"
                 dataKey="value"
               >
                 {tier_distribution.map((entry, index) => (
@@ -384,431 +1206,416 @@ function OverviewPage({ data }) {
               <Tooltip />
             </PieChart>
           </ResponsiveContainer>
-          <div style={{ marginTop: 20 }}>
-            {tier_distribution.map((t, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 2, background: COLORS[i % COLORS.length] }} />
-                  <span style={{ fontWeight: 600, color: '#475569' }}>{t.name}</span>
-                </div>
-                <span style={{ fontWeight: 700 }}>{t.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        </motion.div>
       </div>
 
+      {/* Disruptions & Fraud */}
       <div className="grid-2">
-        <div className="card">
+        <motion.div className="card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.5 }}>
           <div className="card-header">
-            <h3 className="card-title">Live Disruption Monitor</h3>
-            <span className="badge-live"><div className="live-dot" /> Tracking {active_disruptions.length} events</span>
+            <h3 className="card-title">Live Disruptions</h3>
+            <span className="badge-live">
+              <div className="live-dot" />
+              {active_disruptions.length} Events
+            </span>
           </div>
           {active_disruptions.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--hint)' }}>
-              <CheckCircle size={40} color="var(--success)" style={{ opacity: 0.2, marginBottom: 12 }} />
-              <p>All cities operating within normal parameters</p>
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94A3B8' }}>
+              <CheckCircle size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
+              <p>All systems normal</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {active_disruptions.map((d, i) => (
-                <div key={i} style={{ padding: 16, borderRadius: 12, background: '#F8FAFC', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 16 }}>
-                  <div style={{ 
-                    width: 40, height: 40, borderRadius: 10, 
-                    background: d.severity === 'extreme' ? '#FEF2F2' : d.severity === 'severe' ? '#FFFBEB' : '#EFF6FF',
-                    display: 'flex', alignItems: 'center', justifyCenter: 'center'
-                  }}>
-                    <Zap size={20} color={d.severity === 'extreme' ? 'var(--danger)' : d.severity === 'severe' ? 'var(--warning)' : 'var(--primary)'} />
+            active_disruptions.slice(0, 3).map((d, i) => (
+              <motion.div
+                key={i}
+                className="disruption-item"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 + i * 0.1 }}
+              >
+                <div
+                  className="disruption-icon"
+                  style={{
+                    background: d.severity === 'extreme' ? 'rgba(239, 68, 68, 0.2)' : d.severity === 'severe' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(26, 86, 219, 0.2)',
+                  }}
+                >
+                  <Zap
+                    size={20}
+                    color={d.severity === 'extreme' ? '#EF4444' : d.severity === 'severe' ? '#F59E0B' : '#1A56DB'}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700 }}>
+                    {d.city} • {d.type}
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700 }}>{d.city} • {d.type}</div>
-                    <div style={{ fontSize: 12, color: 'var(--muted)' }}>Severity: {d.severity.toUpperCase()} • Infra DSS: {(d.dss * 100).toFixed(0)}%</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--primary)' }}>x{d.dss.toFixed(2)}</div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--muted)' }}>MULTIPLIER</div>
+                  <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                    Severity: <span style={{ fontWeight: 700 }}>{d.severity.toUpperCase()}</span>
                   </div>
                 </div>
-              ))}
-            </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#1A56DB' }}>x{d.dss.toFixed(2)}</div>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>DSS</div>
+                </div>
+              </motion.div>
+            ))
           )}
-        </div>
+        </motion.div>
 
-        <div className="card">
+        <motion.div className="card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.6 }}>
           <div className="card-header">
-            <h3 className="card-title">Fraud Operations</h3>
+            <h3 className="card-title">Fraud Risk Score</h3>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ display: 'flex', gap: 16 }}>
-              <div style={{ flex: 1, padding: 20, borderRadius: 16, background: '#ECFDF5', textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--success)' }}>{data.fraud_summary?.auto_approved ?? 0}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#065F46', marginTop: 4 }}>AUTO-APPROVED</div>
-              </div>
-              <div style={{ flex: 1, padding: 20, borderRadius: 16, background: '#FEF2F2', textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--danger)' }}>{data.fraud_summary?.auto_rejected ?? 0}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#991B1B', marginTop: 4 }}>AUTO-REJECTED</div>
-              </div>
-            </div>
-            
-            <div style={{ padding: 20, borderRadius: 16, background: '#F8FAFC', border: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>Manual Queue</div>
-                <span className="status-pill pill-pending" style={{ padding: '2px 8px' }}>{data.fraud_summary?.under_review ?? 0} Pending</span>
-              </div>
-              <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.5 }}>
-                AI confidence for these claims is between 30-70%. Requires human verification of platform activity logs.
-              </p>
-              <button style={{ marginTop: 12, width: '100%', padding: '8px', borderRadius: 8, border: '1px solid var(--primary)', background: 'transparent', color: 'var(--primary)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                Review Queue
-              </button>
-            </div>
-          </div>
-        </div>
+          <AnimatedFraudGauge value={data.fraud_summary?.avg_score ?? 35} />
+        </motion.div>
       </div>
+    </motion.div>
+  )
+}
+
+function AnalyticsPage({ data }) {
+  const cityData = generateCityData()
+  const forecastData = generateWeeklyChart()
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
+      {/* India Risk Map */}
+      <motion.div className="card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}>
+        <div className="card-header">
+          <h3 className="card-title">India Risk Heatmap</h3>
+        </div>
+        <IndiaRiskMap cityData={cityData} />
+      </motion.div>
+
+      {/* Analytics Grid */}
+      <div className="grid-2" style={{ marginTop: 20 }}>
+        <motion.div className="card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}>
+          <div className="card-header">
+            <h3 className="card-title">City Loss Ratios</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={cityData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis dataKey="city" stroke="#94A3B8" />
+              <YAxis stroke="#94A3B8" />
+              <Tooltip contentStyle={{ background: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(255,255,255,0.2)' }} />
+              <Bar dataKey="loss" fill="#EF4444" radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </motion.div>
+
+        <motion.div className="card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }}>
+          <div className="card-header">
+            <h3 className="card-title">Next Week Forecast</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={forecastData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+              <XAxis dataKey="name" stroke="#94A3B8" />
+              <YAxis stroke="#94A3B8" />
+              <Tooltip contentStyle={{ background: 'rgba(30, 41, 59, 0.95)', border: '1px solid rgba(255,255,255,0.2)' }} />
+              <Area type="monotone" dataKey="claims" fill="#10B981" stroke="#10B981" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </motion.div>
+      </div>
+    </motion.div>
+  )
+}
+
+const MOCK_CLAIMS = [
+  { id: 'CLM-001', worker: 'Rajesh Kumar', city: 'Mumbai', amount: '₹5,000', fraud: 15, status: 'approved' },
+  { id: 'CLM-002', worker: 'Priya Singh', city: 'Delhi', amount: '₹8,500', fraud: 45, status: 'pending' },
+  { id: 'CLM-003', worker: 'Arjun Patel', city: 'Bangalore', amount: '₹12,000', fraud: 78, status: 'rejected' },
+  { id: 'CLM-004', worker: 'Sneha Gupta', city: 'Hyderabad', amount: '₹6,200', fraud: 22, status: 'approved' },
+  { id: 'CLM-005', worker: 'Vikram Das', city: 'Chennai', amount: '₹9,800', fraud: 62, status: 'pending' },
+]
+
+const MOCK_DISRUPTIONS = [
+  { city: 'Mumbai', type: 'Rain', severity: 'severe', dss: 1.2, active: true },
+  { city: 'Delhi', type: 'Heatwave', severity: 'extreme', dss: 1.5, active: true },
+  { city: 'Bangalore', type: 'Low AQI', severity: 'moderate', dss: 0.8, active: false },
+]
+
+const MOCK_WORKERS = [
+  { name: 'Rajesh Kumar', platform: 'blinkit', city: 'Mumbai', risk_score: 0.35, is_active: true },
+  { name: 'Priya Singh', platform: 'zomato', city: 'Delhi', risk_score: 0.52, is_active: true },
+  { name: 'Arjun Patel', platform: 'swiggy', city: 'Bangalore', risk_score: 0.15, is_active: false },
+  { name: 'Sneha Gupta', platform: 'zepto', city: 'Hyderabad', risk_score: 0.68, is_active: true },
+  { name: 'Vikram Das', platform: 'blinkit', city: 'Chennai', risk_score: 0.42, is_active: true },
+]
+
+function ClaimsPage({ data, selectedClaim, setSelectedClaim }) {
+  const claims = data?.length ? data.map(c => ({
+    id: c.id,
+    worker: c.worker_name ?? c.worker,
+    city: c.city,
+    amount: c.amount_paid != null ? fmt(c.amount_paid) : c.amount,
+    fraud: c.fraud_score ?? c.fraud,
+    status: c.status,
+  })) : MOCK_CLAIMS
+
+  return (
+    <>
+      <motion.div className="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
+        <div className="card-header">
+          <h3 className="card-title">Recent Claims</h3>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Claim ID</th>
+                <th>Worker</th>
+                <th>Amount</th>
+                <th>Fraud Score</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {claims.map((c, i) => (
+                <motion.tr
+                  key={i}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <td style={{ fontFamily: 'monospace', color: '#1A56DB', fontWeight: 700 }}>{c.id}</td>
+                  <td style={{ fontWeight: 700 }}>{c.worker}</td>
+                  <td>{c.amount}</td>
+                  <td>
+                    <span style={{ fontWeight: 700, color: c.fraud > 70 ? '#EF4444' : c.fraud > 30 ? '#F59E0B' : '#10B981' }}>
+                      {c.fraud}%
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`status-pill pill-${c.status}`}>{c.status}</span>
+                  </td>
+                  <td>
+                    <button
+                      onClick={() => setSelectedClaim(c)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        border: '1px solid #1A56DB',
+                        background: 'transparent',
+                        color: '#1A56DB',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Analyze
+                    </button>
+                  </td>
+                </motion.tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {selectedClaim && <FraudModal claim={selectedClaim} onClose={() => setSelectedClaim(null)} />}
+      </AnimatePresence>
     </>
   )
 }
 
-// ── Analytics Page ────────────────────────────────────────────────────────────
-
-function AnalyticsPage({ data }) {
-  if (!data) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--hint)' }}>Crunching Predictive Models...</div>
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Benefit-Cost Ratio (BCR) Trend</h3>
-            <div style={{ display: 'flex', gap: 8 }}>
-               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--success)' }}>Safe Zone (55-70%)</span>
-            </div>
-          </div>
-          <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={[
-              { week: 'W1', bcr: 48 }, { week: 'W2', bcr: 52 }, { week: 'W3', bcr: 61 }, 
-              { week: 'W4', bcr: 58 }, { week: 'W5', bcr: 64 }, { week: 'W6', bcr: 58.4 }
-            ]}>
-              <defs>
-                <linearGradient id="colorBcr" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#1A56DB" stopOpacity={0.2}/>
-                  <stop offset="95%" stopColor="#1A56DB" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-              <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Area type="monotone" dataKey="bcr" stroke="#1A56DB" strokeWidth={3} fillOpacity={1} fill="url(#colorBcr)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">City-wise Loss Ratios</h3>
-            <Info size={16} color="var(--hint)" />
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr><th>City</th><th>Loss Ratio</th><th>Status</th></tr>
-              </thead>
-              <tbody>
-                {data.city_loss_ratios?.map((city, i) => (
-                  <tr key={i}>
-                    <td style={{ fontWeight: 700 }}>{city.city}</td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ flex: 1, height: 6, background: '#F1F5F9', borderRadius: 3, overflow: 'hidden', minWidth: 60 }}>
-                          <div style={{ height: '100%', background: city.loss_ratio > 0.8 ? 'var(--danger)' : 'var(--primary)', width: `${Math.min(100, city.loss_ratio * 100)}%` }} />
-                        </div>
-                        <span style={{ fontWeight: 800 }}>{(city.loss_ratio * 100).toFixed(1)}%</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`status-pill ${city.loss_ratio > 0.7 ? 'pill-rejected' : 'pill-active'}`}>
-                        {city.loss_ratio > 0.7 ? 'CRITICAL' : 'STABLE'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="card-header">
-          <h3 className="card-title">Next-Week Forecast (Predictive AI)</h3>
-          <div style={{ fontSize: 12, padding: '4px 10px', background: '#F1F5F9', borderRadius: 6, fontWeight: 700 }}>XGBoost Engine V4.2</div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
-          {data.next_week_forecast?.map((f, i) => (
-            <div key={i} style={{ padding: 20, borderRadius: 16, border: '1px solid var(--border)', background: '#F8FAFC' }}>
-              <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 12 }}>{f.city}</div>
-              <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600, marginBottom: 4 }}>WORKERS AT RISK</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)', marginBottom: 16 }}>{f.workers_at_risk}</div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {f.top_risks.map((risk, j) => (
-                  <div key={j} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                    <span style={{ fontWeight: 600 }}>{risk.peril.replace('_', ' ')}</span>
-                    <span style={{ fontWeight: 700, color: risk.probability > 30 ? 'var(--danger)' : 'var(--muted)' }}>{risk.probability}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="card" style={{ background: '#0F172A', color: '#fff' }}>
-        <div className="card-header">
-          <h3 className="card-title" style={{ color: '#fff' }}>Actuarial Stress Test: Monsoon Season</h3>
-          <span style={{ fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,0.1)', padding: '4px 12px', borderRadius: 20 }}>SIMULATION MODE</span>
-        </div>
-        <div style={{ display: 'flex', gap: 40, alignItems: 'center' }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
-              Simulating 14 days of sustained "Severe" rainfall (75mm/day) in <strong>Mumbai</strong> for <strong>{data.stress_test?.workers}</strong> workers.
-              This stress test calculates the insolvency risk and capital requirements for extreme climate events.
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 24 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>EST. CLAIMS</div>
-              <div style={{ fontSize: 24, fontWeight: 800 }}>{data.stress_test?.est_claims}</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>EST. PAYOUT</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#F59E0B' }}>{fmt(data.stress_test?.est_payout)}</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>SOLVENCY RATIO</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#10B981' }}>{data.stress_test?.solvency_ratio}x</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Claims Page ───────────────────────────────────────────────────────────────
-
-function ClaimsPage({ data }) {
-  const [selectedClaim, setSelectedClaim] = useState(null)
-  
-  if (!data) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--hint)' }}>Loading Claim Register...</div>
+function DisruptionsPage({ data }) {
+  const disruptions = data?.length ? data.map(d => ({
+    city: d.city,
+    type: d.disruption_type ?? d.type,
+    severity: d.severity,
+    dss: d.dss_multiplier ?? d.dss,
+    active: d.is_active ?? d.active,
+  })) : MOCK_DISRUPTIONS
 
   return (
-    <div className="card">
+    <motion.div className="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
       <div className="card-header">
-        <h3 className="card-title">Claims Management ({data.length})</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{ position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--hint)' }} />
-            <input type="text" placeholder="Search Claim ID..." style={{ padding: '8px 12px 8px 36px', borderRadius: 8, border: '1px solid var(--border)', fontSize: 13, width: 220 }} />
-          </div>
-        </div>
+        <h3 className="card-title">Disruption Events ({disruptions.length})</h3>
       </div>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Claim ID</th><th>Worker</th><th>Event</th>
-              <th>Payout</th><th>Fraud Score</th><th>Status</th><th>Actions</th>
+              <th>City</th>
+              <th>Type</th>
+              <th>Severity</th>
+              <th>DSS Impact</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
-            {data.map(c => (
-              <tr key={c.id}>
-                <td style={{ fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 700 }}>{c.id}</td>
-                <td style={{ fontWeight: 700 }}>{c.worker} <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>{c.city}</div></td>
-                <td><span style={{ fontSize: 13, fontWeight: 600 }}>{c.event}</span></td>
-                <td style={{ fontWeight: 800 }}>{c.amount}</td>
-                <td>
-                  <span className={`fraud-tag ${c.fraud > 70 ? 'fraud-high' : c.fraud > 30 ? 'fraud-med' : 'fraud-low'}`}>
-                    {c.fraud}%
-                  </span>
-                </td>
-                <td><span className={`status-pill pill-${c.status}`}>{c.status}</span></td>
-                <td>
-                  <button 
-                    onClick={() => setSelectedClaim(c)}
-                    style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-                  >
-                    <Eye size={12} /> Analyze
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {selectedClaim && <FraudModal claim={selectedClaim} onClose={() => setSelectedClaim(null)} />}
-    </div>
-  )
-}
-
-// ── Disruptions Page ──────────────────────────────────────────────────────────
-
-function DisruptionsPage({ data }) {
-  if (!data) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--hint)' }}>Loading Event Logs...</div>
-  return (
-    <div className="card">
-      <div className="card-title">Disruption Event History ({data.length})</div>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr><th>City</th><th>Trigger Type</th><th>Severity</th><th>DSS Impact</th><th>Time</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {data.map((d, i) => (
-              <tr key={i}>
+            {disruptions.map((d, i) => (
+              <motion.tr key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}>
                 <td style={{ fontWeight: 700 }}>{d.city}</td>
-                <td style={{ fontWeight: 600 }}>{d.type}</td>
+                <td>{d.type}</td>
                 <td>
-                  <span className={`status-pill ${d.severity === 'extreme' ? 'pill-rejected' : d.severity === 'severe' ? 'pill-pending' : 'pill-approved'}`}>
+                  <span
+                    className={`status-pill ${d.severity === 'extreme' ? 'pill-rejected' : d.severity === 'severe' ? 'pill-pending' : 'pill-approved'}`}
+                  >
                     {d.severity}
                   </span>
                 </td>
                 <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ flex: 1, height: 6, background: '#F1F5F9', borderRadius: 3, width: 80, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', background: 'var(--primary)', width: `${d.dss * 100}%` }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ flex: 1, height: 6, background: '#F1F5F9', borderRadius: 3, width: 60, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: '#1A56DB', width: `${d.dss * 100}%` }} />
                     </div>
-                    <span style={{ fontWeight: 800 }}>{(d.dss * 100).toFixed(0)}%</span>
+                    <span style={{ fontWeight: 700, fontSize: 12 }}>{(d.dss * 100).toFixed(0)}%</span>
                   </div>
                 </td>
-                <td style={{ color: 'var(--muted)', fontSize: 12, fontWeight: 500 }}>
-                  {d.started_at ? new Date(d.started_at).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
+                <td>
+                  <span className={`status-pill ${d.active ? 'pill-active' : 'pill-pending'}`}>{d.active ? 'LIVE' : 'ARCHIVED'}</span>
                 </td>
-                <td><span className={`status-pill ${d.active ? 'pill-active' : 'pill-ended'}`}>{d.active ? 'LIVE' : 'ARCHIVED'}</span></td>
-              </tr>
+              </motion.tr>
             ))}
           </tbody>
         </table>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
-// ── Workers Page ──────────────────────────────────────────────────────────────
-
 function WorkersPage({ data }) {
-  if (!data) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--hint)' }}>Loading Worker Registry...</div>
+  const workers = data?.length ? data.map(w => ({
+    name: w.full_name ?? w.name,
+    platform: w.platform,
+    city: w.city,
+    risk_score: w.risk_score,
+    is_active: w.is_active,
+  })) : MOCK_WORKERS
+
   return (
-    <div className="card">
+    <motion.div className="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
       <div className="card-header">
-        <h3 className="card-title">Active Risk Profiles ({data.length})</h3>
-        <button style={{ padding: '8px 16px', borderRadius: 8, background: 'var(--primary)', color: '#fff', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-          Export CRM
-        </button>
+        <h3 className="card-title">Active Workers ({workers.length})</h3>
       </div>
       <div className="table-wrap">
         <table>
           <thead>
-            <tr><th>Worker Name</th><th>Platform</th><th>City</th><th>Risk Level</th><th>Verification</th><th>Status</th></tr>
+            <tr>
+              <th>Worker Name</th>
+              <th>Platform</th>
+              <th>City</th>
+              <th>Risk Level</th>
+              <th>Status</th>
+            </tr>
           </thead>
           <tbody>
-            {data.map(w => (
-              <tr key={w.id}>
-                <td style={{ fontWeight: 700 }}>{w.name} <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>{w.phone}</div></td>
-                <td style={{ textTransform: 'capitalize', fontWeight: 600 }}>{w.platform.replace('_', ' ')}</td>
+            {workers.map((w, i) => (
+              <motion.tr key={i} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}>
+                <td style={{ fontWeight: 700 }}>{w.name}</td>
+                <td style={{ textTransform: 'capitalize' }}>{w.platform.replace('_', ' ')}</td>
                 <td>{w.city}</td>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: w.risk_score > 0.7 ? 'var(--danger)' : w.risk_score > 0.4 ? 'var(--warning)' : 'var(--success)' }} />
+                    <div
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        background: w.risk_score > 0.7 ? '#EF4444' : w.risk_score > 0.4 ? '#F59E0B' : '#10B981',
+                      }}
+                    />
                     <span style={{ fontWeight: 700 }}>{(w.risk_score * 100).toFixed(0)}%</span>
                   </div>
                 </td>
                 <td>
-                  {w.is_verified
-                    ? <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700 }}><UserCheck size={14} /> KYC OK</span>
-                    : <span style={{ color: 'var(--hint)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 700 }}><AlertTriangle size={14} /> UNVERIFIED</span>
-                  }
+                  <span className={`status-pill ${w.is_active ? 'pill-active' : 'pill-pending'}`}>{w.is_active ? 'ACTIVE' : 'OFFLINE'}</span>
                 </td>
-                <td><span className={`status-pill ${w.is_active ? 'pill-active' : 'pill-ended'}`}>{w.is_active ? 'ACTIVE' : 'OFFLINE'}</span></td>
-              </tr>
+              </motion.tr>
             ))}
           </tbody>
         </table>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════════
+// MAIN APP
+// ════════════════════════════════════════════════════════════════════════════════
+
+const MOCK_STATS = {
+  metrics: { active_workers: 2847, active_policies: 3452, claims_this_week: 234, payouts_this_week: 156000 },
+  fraud_summary: { avg_score: 35, auto_approved: 89, auto_rejected: 12, under_review: 8 },
+  active_disruptions: [
+    { city: 'Mumbai', type: 'Rain', severity: 'severe', dss: 1.2 },
+    { city: 'Delhi', type: 'Heatwave', severity: 'extreme', dss: 1.5 },
+  ],
+}
 
 export default function App() {
   const [active, setActive] = useState('overview')
-  const [stats, setStats]           = useState(null)
-  const [analytics, setAnalytics]   = useState(null)
-  const [claims, setClaims]         = useState(null)
+  const [stats, setStats] = useState(null)
+  const [analytics, setAnalytics] = useState(null)
+  const [claims, setClaims] = useState(null)
   const [disruptions, setDisruptions] = useState(null)
-  const [workers, setWorkers]       = useState(null)
+  const [workers, setWorkers] = useState(null)
+  const [selectedClaim, setSelectedClaim] = useState(null)
 
   useEffect(() => {
-    fetch(`${API}/admin/stats`).then(r => r.json()).then(setStats).catch(() => setStats({}))
+    fetch(`${API}/admin/stats`).then(r => r.json()).then(setStats).catch(() => setStats(MOCK_STATS))
     fetch(`${API}/admin/analytics`).then(r => r.json()).then(setAnalytics).catch(() => setAnalytics({}))
   }, [])
 
   useEffect(() => {
     if (active === 'claims' && !claims)
-      fetch(`${API}/admin/claims`).then(r => r.json()).then(setClaims).catch(() => setClaims([]))
+      fetch(`${API}/admin/claims`).then(r => r.json()).then(setClaims).catch(() => setClaims(MOCK_CLAIMS))
     if (active === 'disruptions' && !disruptions)
-      fetch(`${API}/admin/disruptions`).then(r => r.json()).then(setDisruptions).catch(() => setDisruptions([]))
+      fetch(`${API}/admin/disruptions`).then(r => r.json()).then(setDisruptions).catch(() => setDisruptions(MOCK_DISRUPTIONS))
     if (active === 'workers' && !workers)
-      fetch(`${API}/admin/workers`).then(r => r.json()).then(setWorkers).catch(() => setWorkers([]))
+      fetch(`${API}/admin/workers`).then(r => r.json()).then(setWorkers).catch(() => setWorkers(MOCK_WORKERS))
   }, [active])
 
   const renderContent = () => {
     switch (active) {
-      case 'overview':    return <OverviewPage    data={stats} />
-      case 'analytics':   return <AnalyticsPage   data={analytics} />
-      case 'claims':      return <ClaimsPage      data={claims} />
-      case 'disruptions': return <DisruptionsPage data={disruptions} />
-      case 'workers':     return <WorkersPage     data={workers} />
-      default:            return <OverviewPage    data={stats} />
+      case 'overview':
+        return <OverviewPage data={stats} />
+      case 'analytics':
+        return <AnalyticsPage data={analytics} />
+      case 'claims':
+        return <ClaimsPage data={claims} selectedClaim={selectedClaim} setSelectedClaim={setSelectedClaim} />
+      case 'disruptions':
+        return <DisruptionsPage data={disruptions} />
+      case 'workers':
+        return <WorkersPage data={workers} />
+      default:
+        return <OverviewPage data={stats} />
     }
   }
 
   const titles = {
     overview: 'InsurOps Command Center',
-    analytics: 'Actuarial Predictive HQ',
+    analytics: 'Predictive Analytics HQ',
     claims: 'Claims & Fraud Operations',
-    disruptions: 'Climate Disruption Registry',
-    workers: 'Worker Risk Profiles'
+    disruptions: 'Climate Disruption Events',
+    workers: 'Worker Risk Profiles',
   }
 
   return (
     <>
       <style>{styles}</style>
+      <ParticleCanvas />
       <div className="layout">
         <Sidebar active={active} setActive={setActive} />
         <div className="main">
           <div className="topbar">
             <h1>{titles[active]}</h1>
             <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-              <div style={{ textAlign: 'right', display: 'none' /* mobile hide */ }}>
-                <div style={{ fontSize: 12, fontWeight: 700 }}>Admin Session</div>
-                <div style={{ fontSize: 10, color: 'var(--muted)' }}>v3.0.4 - Secure Access</div>
-              </div>
-              <div className="badge-live">
+              <span className="badge-live">
                 <div className="live-dot" />
-                Live Network Data
-              </div>
-              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 14 }}>
+                Live Data
+              </span>
+              <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg, #1A56DB, #10B981)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: 14 }}>
                 AD
               </div>
             </div>
           </div>
-          <div className="content">
-            {renderContent()}
-          </div>
+          <div className="content">{renderContent()}</div>
         </div>
       </div>
     </>

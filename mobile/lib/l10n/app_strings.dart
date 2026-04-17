@@ -108,6 +108,17 @@ class AppStrings {
   final String avgEarningsHint;
   final String register;
   final String registering;
+  // Terms screen UI
+  final String termsAndConditions;
+  final String pleaseReadTerms;
+  final String scrollToRead;
+  final String acceptTermsOfService;
+  final String acceptPrivacyPolicy;
+  final String acceptDataConsent;
+  final String acceptAndContinue;
+  final String acceptAllToContinue;
+  final String confirmAge;
+  final String lastUpdated;
 
   const AppStrings({
     required this.languageName,
@@ -210,6 +221,16 @@ class AppStrings {
     required this.avgEarningsHint,
     required this.register,
     required this.registering,
+    required this.termsAndConditions,
+    required this.pleaseReadTerms,
+    required this.scrollToRead,
+    required this.acceptTermsOfService,
+    required this.acceptPrivacyPolicy,
+    required this.acceptDataConsent,
+    required this.acceptAndContinue,
+    required this.acceptAllToContinue,
+    required this.confirmAge,
+    required this.lastUpdated,
   });
 
   static const Map<String, AppStrings> all = {'en': _en, 'ta': _ta, 'hi': _hi};
@@ -317,6 +338,16 @@ const _en = AppStrings(
   avgEarningsHint: 'Average daily earnings (₹)',
   register: 'Complete Registration',
   registering: 'Registering...',
+  termsAndConditions: 'Terms & Conditions',
+  pleaseReadTerms: 'Please read and accept all terms before continuing.',
+  scrollToRead: 'Scroll down to read all terms',
+  acceptTermsOfService: 'I have read and agree to the Terms of Service & Insurance Policy Terms',
+  acceptPrivacyPolicy: 'I have read and agree to the Privacy Policy',
+  acceptDataConsent: 'I consent to location access and data processing as described above.',
+  acceptAndContinue: 'Accept & Continue',
+  acceptAllToContinue: 'Accept All Terms to Continue',
+  confirmAge: 'By continuing, you confirm you are 18+ and an active gig worker.',
+  lastUpdated: 'Last updated: April 2025 • Version 1.0',
 );
 
 const _ta = AppStrings(
@@ -420,6 +451,16 @@ const _ta = AppStrings(
   avgEarningsHint: 'சராசரி தினசரி வருமானம் (₹)',
   register: 'பதிவை முடிக்கவும்',
   registering: 'பதிவு செய்கிறது...',
+  termsAndConditions: 'விதிமுறைகள் & நிபந்தனைகள்',
+  pleaseReadTerms: 'தொடர்வதற்கு முன் அனைத்து விதிமுறைகளையும் படித்து ஒப்புக்கொள்ளவும்.',
+  scrollToRead: 'அனைத்து விதிமுறைகளையும் படிக்க கீழே உருட்டவும்',
+  acceptTermsOfService: 'சேவை விதிமுறைகள் & காப்பீட்டு கொள்கை விதிமுறைகளை படித்து ஒப்புக்கொள்கிறேன்',
+  acceptPrivacyPolicy: 'தனியுரிமைக் கொள்கையை படித்து ஒப்புக்கொள்கிறேன்',
+  acceptDataConsent: 'மேலே விவரிக்கப்பட்டபடி இருப்பிட அணுகல் மற்றும் தரவு செயலாக்கத்திற்கு சம்மதிக்கிறேன்.',
+  acceptAndContinue: 'ஒப்புக்கொண்டு தொடரவும்',
+  acceptAllToContinue: 'தொடர அனைத்து விதிமுறைகளையும் ஒப்புக்கொள்ளவும்',
+  confirmAge: 'தொடர்வதன் மூலம், நீங்கள் 18+ மற்றும் செயலில் உள்ள கிக் தொழிலாளி என்று உறுதிப்படுத்துகிறீர்கள்.',
+  lastUpdated: 'கடைசியாக புதுப்பிக்கப்பட்டது: ஏப்ரல் 2025 • பதிப்பு 1.0',
 );
 
 const _hi = AppStrings(
@@ -523,4 +564,14 @@ const _hi = AppStrings(
   avgEarningsHint: 'औसत दैनिक आय (₹)',
   register: 'पंजीकरण पूरा करें',
   registering: 'पंजीकरण हो रहा है...',
+  termsAndConditions: 'नियम और शर्तें',
+  pleaseReadTerms: 'जारी रखने से पहले सभी शर्तों को पढ़ें और स्वीकार करें.',
+  scrollToRead: 'सभी शर्तें पढ़ने के लिए नीचे स्क्रोल करें',
+  acceptTermsOfService: 'मैंने सेवा शर्तें और बीमा पॉलिसी शर्तें पढ़ी हैं और सहमत हूं',
+  acceptPrivacyPolicy: 'मैंने गोपनीयता नीति पढ़ी है और सहमत हूं',
+  acceptDataConsent: 'मैं उपरोक्त विवरण अनुसार स्थान पहुंच और डेटा प्रसंस्करण के लिए सहमति देता हूं.',
+  acceptAndContinue: 'स्वीकार करें और जारी रखें',
+  acceptAllToContinue: 'जारी रखने के लिए सभी शर्तें स्वीकार करें',
+  confirmAge: 'जारी रखकर, आप पुष्टि करते हैं कि आप 18+ हैं और एक सक्रिय गिग वर्कर हैं.',
+  lastUpdated: 'अंतिम अपडेट: अप्रैल 2025 • संस्करण 1.0',
 );
