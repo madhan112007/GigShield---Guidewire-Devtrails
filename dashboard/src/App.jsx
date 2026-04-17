@@ -1110,8 +1110,8 @@ function OverviewPage({ data }) {
   if (!data) return <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>Loading...</div>
 
   const metrics = data.metrics || {}
-  const weekly_chart = generateWeeklyChart()
-  const tier_distribution = generateTierData()
+  const weekly_chart = data.weekly_chart?.length ? data.weekly_chart.map(d => ({ name: d.day, claims: d.claims, payouts: d.payouts })) : generateWeeklyChart()
+  const tier_distribution = data.tier_distribution?.length ? data.tier_distribution : generateTierData()
   const city_loss = generateCityData()
   const active_disruptions = data.active_disruptions || []
 
@@ -1273,8 +1273,12 @@ function OverviewPage({ data }) {
 }
 
 function AnalyticsPage({ data }) {
-  const cityData = generateCityData()
-  const forecastData = generateWeeklyChart()
+  const cityData = data?.city_loss_ratios?.length
+    ? data.city_loss_ratios.map(c => ({ city: c.city, loss: Math.round(c.loss_ratio * 100) }))
+    : generateCityData()
+  const forecastData = data?.next_week_forecast?.length
+    ? data.next_week_forecast.map(f => ({ name: f.city, claims: f.estimated_claims }))
+    : generateWeeklyChart()
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
@@ -1345,14 +1349,7 @@ const MOCK_WORKERS = [
 ]
 
 function ClaimsPage({ data, selectedClaim, setSelectedClaim }) {
-  const claims = data?.length ? data.map(c => ({
-    id: c.id,
-    worker: c.worker_name ?? c.worker,
-    city: c.city,
-    amount: c.amount_paid != null ? fmt(c.amount_paid) : c.amount,
-    fraud: c.fraud_score ?? c.fraud,
-    status: c.status,
-  })) : MOCK_CLAIMS
+  const claims = data?.length ? data : MOCK_CLAIMS
 
   return (
     <>
@@ -1423,13 +1420,7 @@ function ClaimsPage({ data, selectedClaim, setSelectedClaim }) {
 }
 
 function DisruptionsPage({ data }) {
-  const disruptions = data?.length ? data.map(d => ({
-    city: d.city,
-    type: d.disruption_type ?? d.type,
-    severity: d.severity,
-    dss: d.dss_multiplier ?? d.dss,
-    active: d.is_active ?? d.active,
-  })) : MOCK_DISRUPTIONS
+  const disruptions = data?.length ? data : MOCK_DISRUPTIONS
 
   return (
     <motion.div className="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
@@ -1480,13 +1471,7 @@ function DisruptionsPage({ data }) {
 }
 
 function WorkersPage({ data }) {
-  const workers = data?.length ? data.map(w => ({
-    name: w.full_name ?? w.name,
-    platform: w.platform,
-    city: w.city,
-    risk_score: w.risk_score,
-    is_active: w.is_active,
-  })) : MOCK_WORKERS
+  const workers = data?.length ? data : MOCK_WORKERS
 
   return (
     <motion.div className="card" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
