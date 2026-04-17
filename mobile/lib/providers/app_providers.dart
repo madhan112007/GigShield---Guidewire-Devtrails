@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:susanoo/services/api_service.dart';
+import 'package:susanoo/services/firebase_service.dart';
 import 'package:susanoo/services/location_service.dart';
 
 // ── Core providers ────────────────────────────────────────────────────────────
@@ -41,10 +42,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
     _checkAuth();
   }
 
+  Future<void> _registerFcmToken() async {
+    try {
+      final token = await FirebaseService.getToken();
+      if (token != null) await _api.registerFcmToken(token);
+    } catch (_) {}
+  }
+
   Future<void> _checkAuth() async {
     final loggedIn = await _api.isLoggedIn();
     state = state.copyWith(isLoggedIn: loggedIn);
-    if (loggedIn) LocationService.startTracking(_api);
+    if (loggedIn) {
+      LocationService.startTracking(_api);
+      await _registerFcmToken();
+    }
   }
 
   Future<void> forceLogout() async {
@@ -80,6 +91,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         workerId: res['worker_id'],
         isLoading: false,
       );
+      if (!isNew) await _registerFcmToken();
       return isNew;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: 'Invalid OTP. Try again.');
@@ -90,6 +102,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> completeRegistration() async {
     state = state.copyWith(isLoggedIn: true, isNewUser: false);
     LocationService.startTracking(_api);
+    await _registerFcmToken();
   }
 
   void setPlatform(String platform) {
