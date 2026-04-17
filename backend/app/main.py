@@ -5,8 +5,9 @@ from contextlib import asynccontextmanager
 from sqlalchemy import text
 import traceback
 
-from app.api import auth, workers, policies, claims, payouts, disruptions, actuarial, admin, location
+from app.api import auth, workers, policies, claims, payouts, disruptions, actuarial, admin, location, notifications
 from app.database import engine, Base
+from app.config import settings
 
 
 @asynccontextmanager
@@ -27,6 +28,8 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE disruption_events ADD COLUMN IF NOT EXISTS lat FLOAT",
             "ALTER TABLE disruption_events ADD COLUMN IF NOT EXISTS lng FLOAT",
             "ALTER TABLE disruption_events ADD COLUMN IF NOT EXISTS radius_km FLOAT DEFAULT 5.0",
+            "ALTER TABLE workers ADD COLUMN IF NOT EXISTS fcm_token VARCHAR(200)",
+            "CREATE TABLE IF NOT EXISTS worker_notifications (id VARCHAR PRIMARY KEY, worker_id VARCHAR REFERENCES workers(id), title VARCHAR(120) NOT NULL, body TEXT NOT NULL, notif_type VARCHAR(40) NOT NULL, ref_id VARCHAR(100), is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW())",
         ]
         for sql in new_columns:
             try:
@@ -75,6 +78,7 @@ app.include_router(disruptions.router, prefix="/api/v1/disruptions", tags=["Disr
 app.include_router(actuarial.router, prefix="/api/v1/actuarial", tags=["Actuarial"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(location.router, prefix="/api/v1/location", tags=["Location"])
+app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["Notifications"])
 
 
 @app.get("/")

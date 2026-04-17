@@ -71,6 +71,22 @@ async def update_me(
     return current_worker
 
 
+@router.post("/fcm-token")
+async def register_fcm_token(
+    payload: dict,
+    db: AsyncSession = Depends(get_db),
+    current_worker: Worker = Depends(get_current_worker),
+):
+    """Register or refresh FCM push token for this device."""
+    token = payload.get("fcm_token", "").strip()
+    if not token:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="fcm_token is required")
+    current_worker.fcm_token = token
+    await db.commit()
+    return {"ok": True}
+
+
 @router.get("/dashboard", response_model=WorkerDashboard)
 async def get_dashboard(
     db: AsyncSession = Depends(get_db),

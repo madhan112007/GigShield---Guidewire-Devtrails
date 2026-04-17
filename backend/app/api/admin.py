@@ -4,6 +4,8 @@ from sqlalchemy import text, select, func, and_
 from datetime import datetime, timedelta, timezone
 from app.database import get_db
 from app.models.models import Worker, Policy, Claim, DisruptionEvent, Payout, PolicyStatus, ClaimStatus, PolicyTier
+from app.services.actuarial_service import calculate_bcr, stress_test_monsoon
+from app.services.disruption_service import TRIGGER_PROBABILITY
 
 router = APIRouter()
 
@@ -144,3 +146,105 @@ async def list_all_disruptions(db: AsyncSession = Depends(get_db)):
             "started_at": d.started_at.isoformat() if d.started_at else None
         })
     return disruptions
+
+
+@router.get("/analytics")
+async def get_analytics(db: AsyncSession = Depends(get_db)):
+    """Predictive analytics + BCR + loss ratio for admin insurer dashboard."""
+    now = datetime.now(timezone.utc)
+
+    # BCR — total claims paid vs total premium collected
+    total_paid = await db.execute(select(func.coalesce(func.sum(Payout.amount), 0.0)).where(Payout.status == "completed"))
+    total_premium = await db.execute(select(func.coalesce(func.sum(Policy.weekly_premium), 0.0)))
+    bcr_data = calculate_bcr(float(total_paid.scalar()), float(total_premium.scalar()))
+
+    # Loss ratio per city
+    city_loss = []
+    cities = ["Bangalore", "Mumbai", "Delhi", "Chennai", "Hyderabad"]
+    for city in cities:
+        city_paid = await db.execute(
+            select(func.coalesce(func.sum(Payout.amount), 0.0))
+            .join(Claim, Payout.claim_id == Claim.id)
+            .join(Worker, Claim.worker_id == Worker.id)
+            .where(Worker.city == city, Payout.status == "completed")
+        )
+        city_premium = await db.execute(
+            select(func.coalesce(func.sum(Policy.weekly_premium), 0.0))
+            .join(Worker, Policy.worker_id == Worker.id)
+            .where(Worker.city == city)
+        )
+        paid = float(city_paid.scalar())
+        premium = float(city_premium.scalar())
+        city_loss.append({
+            "city": city,
+            "loss_ratio": round(paid / premium, 3) if premium > 0 else 0,
+            "paid": paid,
+            "premium": premium,
+        })
+
+    # Next-week disruption forecast — based on historical trigger probabilities
+    forecast = []
+    for city in cities:
+        probs = TRIGGER_PROBABILITY.get(city, {})
+        top_risk = sorted(probs.items(), key=lambda x: x[1], reverse=True)[:2]
+        workers_at_risk = await db.execute(
+            select(func.count(Policy.id))
+            .join(Worker, Policy.worker_id == Worker.id)
+            .where(Worker.city == city, Policy.status == PolicyStatus.ACTIVE)
+        )
+        at_risk = workers_at_risk.scalar() or 0
+        forecast.append({
+            "city": city,
+            "workers_at_risk": at_risk,
+            "top_risks": [{"peril": p, "probability": round(v * 100, 1)} for p, v in top_risk],
+            "estimated_claims": round(at_risk * sum(v for _, v in top_risk), 0),
+        })
+
+    # Stress test — worst city
+    stress = stress_test_monsoon("Mumbai", 650.0, PolicyTier.SMART)
+
+    # Fraud trend — last 7 days
+    fraud_trend = []
+    for i in range(7):
+        day = (now - timedelta(days=6 - i)).date()
+        day_start = datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
+        day_end = datetime.combine(day, datetime.max.time(), tzinfo=timezone.utc)
+        flagged = await db.execute(
+            select(func.count(Claim.id)).where(
+                and_(Claim.created_at >= day_start, Claim.created_at <= day_end, Claim.fraud_score > 0.3)
+            )
+        )
+        fraud_trend.append({"day": day.strftime("%a"), "flagged": flagged.scalar() or 0})
+
+    return {
+        "bcr": bcr_data,
+        "city_loss_ratios": city_loss,
+        "next_week_forecast": forecast,
+        "stress_test": stress,
+        "fraud_trend": fraud_trend,
+    }
+
+
+@router.get("/claims/{claim_id}/fraud")
+async def get_claim_fraud_detail(claim_id: str, db: AsyncSession = Depends(get_db)):
+    """Get detailed fraud analysis for a specific claim."""
+    import json
+    result = await db.execute(
+        select(Claim, Worker).join(Worker, Claim.worker_id == Worker.id)
+        .where(Claim.id.ilike(f"{claim_id}%"))
+    )
+    row = result.first()
+    if not row:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Claim not found")
+    c, w = row
+    flags = json.loads(c.fraud_flags or "[]")
+    return {
+        "claim_id": c.id,
+        "worker": w.name,
+        "fraud_score": c.fraud_score,
+        "verdict": "APPROVED" if c.fraud_score < 0.3 else "REVIEW" if c.fraud_score < 0.7 else "REJECTED",
+        "flags": flags,
+        "auto_approved": c.auto_approved,
+        "status": c.status.value,
+    }

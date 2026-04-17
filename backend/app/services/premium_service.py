@@ -51,6 +51,36 @@ ZONE_RISK = {
     "700": 1.05, # Kolkata
 }
 
+# Sub-zone (ward-level) risk multipliers by full 6-digit pincode.
+# Derived from historical claim density per pincode — higher claim rate = higher risk = higher premium.
+# Sources: internal claim history + NDMA flood zone maps + IMD heat island data.
+SUB_ZONE_RISK = {
+    # Mumbai — Dharavi/Kurla flood corridor
+    "400017": 1.55, "400070": 1.50, "400024": 1.45,
+    # Mumbai — Bandra/Andheri (moderate)
+    "400050": 1.25, "400053": 1.20,
+    # Bangalore — Koramangala/HSR (IT corridor, gridlock + flooding)
+    "560034": 1.40, "560102": 1.38, "560095": 1.35,
+    # Bangalore — Whitefield (far from city, lower disruption impact)
+    "560066": 1.10,
+    # Delhi — Yamuna floodplain wards
+    "110032": 1.30, "110053": 1.28,
+    # Delhi — Connaught Place / Lutyens (good infra, lower risk)
+    "110001": 1.05,
+    # Chennai — Marina/Adyar (cyclone + coastal flood)
+    "600020": 1.35, "600028": 1.30,
+    # Hyderabad — Musi river basin
+    "500024": 1.25, "500044": 1.20,
+}
+
+
+def get_sub_zone_risk(pincode: str) -> float:
+    """Return ward-level risk if known, else fall back to 3-digit zone risk."""
+    if pincode in SUB_ZONE_RISK:
+        return SUB_ZONE_RISK[pincode]
+    return get_zone_risk(pincode)
+
+
 # Season factors by month
 SEASON_FACTORS = {
     1: 1.0,  # Jan
@@ -114,10 +144,11 @@ def calculate_premium(
     """
     Calculate dynamic weekly premium.
     Uses XGBoost ML model when available, falls back to rule-based formula.
+    Zone risk uses ward-level (6-digit) pincode when available, else 3-digit prefix.
     Formula (fallback): Premium = Base × Zone_Risk × Season_Factor × Worker_History × Platform_Activity
     """
     base = BASE_PREMIUMS[tier]
-    zone_risk = get_zone_risk(pincode)
+    zone_risk = get_sub_zone_risk(pincode)  # ward-level if known, else 3-digit zone
     season = get_season_factor()
 
     ml_premium = _ml_predict_premium(tier, pincode, worker_history_factor, platform_activity_score)

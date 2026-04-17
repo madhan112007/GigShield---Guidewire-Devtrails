@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     RAZORPAY_KEY_ID: str = "rzp_test_mock"
     RAZORPAY_KEY_SECRET: str = "mock_secret"
     RAZORPAY_ACCOUNT_NUMBER: str = "mock_account"
+    FCM_SERVICE_ACCOUNT_PATH: str = "mock_key"  # Path to Firebase service account JSON
+    FCM_PROJECT_ID: str = "mock_key"             # Firebase project ID (e.g. susanoo-d13b0)
     ENVIRONMENT: str = "development"
 
     class Config:

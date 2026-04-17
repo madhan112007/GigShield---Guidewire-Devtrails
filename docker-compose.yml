@@ -53,6 +53,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - ./backend/susanoo-firebase-adminsdk.json:/app/susanoo-firebase-adminsdk.json:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # ── Celery Worker ──────────────────────────────────────────────────────────
@@ -67,8 +68,10 @@ services:
       DATABASE_URL: postgresql+asyncpg://gigshield:gigshield_dev@db:5432/gigshield
       REDIS_URL: redis://redis:6379/0
     depends_on:
-      - api
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./backend:/app
     command: celery -A app.workers.celery_app worker --loglevel=info
@@ -85,10 +88,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://gigshield:gigshield_dev@db:5432/gigshield
       REDIS_URL: redis://redis:6379/0
     depends_on:
-      - worker
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./backend:/app
-    command: celery -A app.workers.celery_app beat --loglevel=info
+    command: celery -A app.workers.celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler
 
   # ── React Admin Dashboard ──────────────────────────────────────────────────
   dashboard:

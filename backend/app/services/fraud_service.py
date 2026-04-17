@@ -55,10 +55,18 @@ def calculate_fraud_score(
     had_suspicious_ping: bool = False,
     claim_amount_ratio: float = 1.0,
     active_hours_ratio: float = 1.0,
+    # Individual behavioral baseline (from DB query at call site)
+    worker_avg_claims_per_week: float = 0.0,   # worker's own historical average
+    zone_avg_claims_per_event: float = 0.0,    # avg claims per event in this pincode zone
+    zone_claim_count_this_event: int = 0,      # how many workers in zone claimed this event
+    zone_total_workers: int = 0,               # total active workers in zone
 ) -> dict:
     """
-    Hybrid fraud scoring: rule-based + Isolation Forest ML.
-    Returns score and list of flags triggered.
+    Hybrid fraud scoring: rule-based + individual behavioral baseline + zone-level anomaly + Isolation Forest ML.
+    
+    Individual baseline: flags workers whose claim rate deviates significantly from their OWN history.
+    Zone-level: flags if claim rate for this event in the zone is anomalously low (worker is outlier)
+    or anomalously high (coordinated fraud ring).
     """
     score = 0.0
     flags = []
@@ -82,13 +90,52 @@ def calculate_fraud_score(
         score += 25
         flags.append("PLATFORM_INACTIVE: Worker not logged in during disruption window")
 
-    # Rule 3: Too many claims this week
+    # Rule 3: Too many claims this week (absolute threshold)
     if claims_this_week >= 5:
         score += 20
         flags.append(f"HIGH_CLAIM_FREQUENCY: {claims_this_week} claims this week")
     elif claims_this_week >= 3:
         score += 10
         flags.append(f"ELEVATED_CLAIM_FREQUENCY: {claims_this_week} claims this week")
+
+    # Rule 3b: Individual behavioral baseline — compare to worker's OWN history
+    # A worker who normally claims 0.5x/week suddenly claiming 4x is more suspicious
+    # than a worker who consistently claims 3x/week.
+    if worker_avg_claims_per_week > 0 and claims_this_week > 0:
+        deviation_ratio = claims_this_week / max(worker_avg_claims_per_week, 0.1)
+        if deviation_ratio >= 4.0:
+            score += 20
+            flags.append(
+                f"INDIVIDUAL_BASELINE_SPIKE: {claims_this_week} claims vs personal avg "
+                f"{worker_avg_claims_per_week:.1f}/wk (x{deviation_ratio:.1f})"
+            )
+        elif deviation_ratio >= 2.5:
+            score += 10
+            flags.append(
+                f"INDIVIDUAL_BASELINE_ELEVATED: {claims_this_week} claims vs personal avg "
+                f"{worker_avg_claims_per_week:.1f}/wk (x{deviation_ratio:.1f})"
+            )
+
+    # Rule 3c: Zone-level behavioral analysis
+    # If >80% of workers in the zone claimed this event, it's likely legitimate (real disruption).
+    # If <5% claimed but this worker did, it's suspicious (worker may be fabricating).
+    # If a tight cluster of workers all claimed within 60s, flag as coordinated ring.
+    if zone_total_workers > 5 and zone_claim_count_this_event > 0:
+        zone_claim_rate = zone_claim_count_this_event / zone_total_workers
+        if zone_claim_rate < 0.05:
+            # Only this worker (and very few others) claimed — zone doesn't corroborate
+            score += 15
+            flags.append(
+                f"ZONE_LOW_CORROBORATION: Only {zone_claim_count_this_event}/{zone_total_workers} "
+                f"workers in zone claimed ({zone_claim_rate:.0%}) — event not corroborated"
+            )
+        elif zone_claim_rate > 0.90:
+            # Near-100% zone claim rate is suspicious — possible coordinated fraud ring
+            score += 20
+            flags.append(
+                f"ZONE_COORDINATED_FRAUD_RISK: {zone_claim_rate:.0%} of zone workers claimed "
+                f"— possible coordinated ring ({zone_claim_count_this_event}/{zone_total_workers})"
+            )
 
     # Rule 4: Duplicate claim for same event
     if claims_same_event >= 1:

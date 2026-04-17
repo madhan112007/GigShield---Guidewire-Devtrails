@@ -9,6 +9,7 @@ from app.services.auth_service import get_current_worker
 from app.services.premium_service import calculate_payout, MAX_DAILY_PAYOUT, MAX_WEEKLY_PAYOUT
 from app.services.fraud_service import calculate_fraud_score
 from app.services.payout_service import initiate_upi_payout
+from app.services.notification_service import notify_claim_approved, notify_claim_rejected, notify_claim_paid
 
 router = APIRouter()
 
@@ -162,6 +163,35 @@ async def trigger_claim(
     )
     claims_this_week = count_result.scalar() or 0
 
+    # Worker's historical average claims per week (last 12 weeks)
+    twelve_weeks_ago = now - timedelta(weeks=12)
+    hist_result = await db.execute(
+        select(func.count(Claim.id)).where(
+            Claim.worker_id == current_worker.id,
+            Claim.created_at >= twelve_weeks_ago,
+        )
+    )
+    hist_count = hist_result.scalar() or 0
+    worker_avg_claims_per_week = round(hist_count / 12.0, 2) if hist_count > 0 else 0.0
+
+    # Zone-level stats: how many workers in same pincode zone claimed this event
+    zone_prefix = current_worker.pincode[:3] if current_worker.pincode else ""
+    zone_claims_result = await db.execute(
+        select(func.count(Claim.id)).where(
+            Claim.disruption_event_id == disruption_event_id,
+        ).join(Worker).where(Worker.pincode.like(f"{zone_prefix}%"))
+    )
+    zone_claim_count = zone_claims_result.scalar() or 0
+
+    # Total active workers in zone
+    zone_workers_result = await db.execute(
+        select(func.count(Worker.id)).where(
+            Worker.pincode.like(f"{zone_prefix}%"),
+            Worker.is_active == True,
+        )
+    )
+    zone_total_workers = zone_workers_result.scalar() or 0
+
     # Fraud detection (re-uses last_ping if fetched)
     ping_cutoff = now - timedelta(minutes=30)
     suspicious_result = await db.execute(
@@ -188,7 +218,11 @@ async def trigger_claim(
         last_known_city=last_known_city,
         had_suspicious_ping=had_suspicious_ping,
         active_hours_ratio=hours_ratio,
-        claim_amount_ratio=1.0, 
+        claim_amount_ratio=1.0,
+        worker_avg_claims_per_week=worker_avg_claims_per_week,
+        zone_avg_claims_per_event=0.0,
+        zone_claim_count_this_event=zone_claim_count,
+        zone_total_workers=zone_total_workers,
     )
 
     # Cap management
@@ -254,8 +288,14 @@ async def trigger_claim(
     await db.commit()
     await db.refresh(claim)
 
+    # Notify on rejection
+    if claim.status == ClaimStatus.REJECTED:
+        await notify_claim_rejected(db, current_worker, claim)
+        await db.commit()
+
     # Auto-payout if approved and amount > 0
     if claim.status == ClaimStatus.APPROVED and (claim.approved_amount or 0) > 0:
+        await notify_claim_approved(db, current_worker, claim, event.disruption_type.value)
         upi_id = current_worker.upi_id or "worker_" + current_worker.id[:8] + "@upi"
         payout_result = await initiate_upi_payout(
             worker_id=current_worker.id,
@@ -287,6 +327,7 @@ async def trigger_claim(
         )
         if payout_result["success"]:
             claim.status = ClaimStatus.PAID
+            await notify_claim_paid(db, current_worker, claim, upi_id, payout_result.get("transaction_ref", ""))
         elif payout_result.get("rollback"):
             # Rollback: revert policy total_claimed so worker can retry
             policy.total_claimed = round(max(0.0, float(policy.total_claimed or 0) - (claim.approved_amount or 0)), 2)

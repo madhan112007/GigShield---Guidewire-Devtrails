@@ -87,12 +87,14 @@ class Worker(Base):
     last_known_lat = Column(Float, nullable=True)
     last_known_lng = Column(Float, nullable=True)
     last_location_at = Column(DateTime(timezone=True), nullable=True)
+    fcm_token = Column(String(200), nullable=True)  # Firebase push token
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     policies = relationship("Policy", back_populates="worker")
     claims = relationship("Claim", back_populates="worker")
     location_pings = relationship("WorkerLocationPing", back_populates="worker")
+    notifications = relationship("WorkerNotification", back_populates="worker")
 
 
 class Policy(Base):
@@ -206,5 +208,21 @@ class WorkerLocationPing(Base):
     recorded_at = Column(DateTime(timezone=True), server_default=func.now())
 
     worker = relationship("Worker", back_populates="location_pings")
+
+
+class WorkerNotification(Base):
+    """In-app notification feed — persisted for mobile app to poll."""
+    __tablename__ = "worker_notifications"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    worker_id = Column(String, ForeignKey("workers.id"), nullable=False)
+    title = Column(String(120), nullable=False)
+    body = Column(Text, nullable=False)
+    notif_type = Column(String(40), nullable=False)  # claim_approved, claim_paid, etc.
+    ref_id = Column(String(100), nullable=True)       # claim_id or event_id
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    worker = relationship("Worker", back_populates="notifications")
 
 

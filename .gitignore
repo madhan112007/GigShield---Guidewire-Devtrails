@@ -9,6 +9,10 @@ venv/
 # Keep env example, ignore actual env
 backend/.env
 
+# Firebase Service Account (contains private key — never commit)
+backend/*-firebase-adminsdk*.json
+mobile/android/app/google-services.json
+
 # ML models (large binary files)
 backend/ml/**/*.joblib
 backend/ml/**/*.pkl

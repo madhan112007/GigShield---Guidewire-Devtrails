@@ -6,9 +6,12 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:susanoo/providers/locale_provider.dart';
 import 'package:susanoo/router/app_router.dart';
 import 'package:susanoo/theme/app_theme.dart';
+import 'package:susanoo/services/firebase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseService.initialize();
+  FirebaseService.setupForegroundHandler();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pinput/pinput.dart';
 import 'package:susanoo/theme/app_theme.dart';
 import 'package:susanoo/providers/app_providers.dart';
+import 'package:susanoo/services/firebase_service.dart';
 import 'dart:async';
 
 class OtpScreen extends ConsumerStatefulWidget {
@@ -56,7 +57,21 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       );
       return;
     }
+    // Register FCM token after successful login
+    _registerFcmToken();
     context.go(isNew ? '/auth/register' : '/home');
+  }
+
+  void _registerFcmToken() async {
+    final token = await FirebaseService.getToken();
+    if (token != null) {
+      try {
+        await ref.read(apiServiceProvider).post('/workers/fcm-token', {'fcm_token': token});
+        print('[FCM] Token registered: ${token.substring(0, 20)}...');
+      } catch (e) {
+        print('[FCM] Token registration failed: $e');
+      }
+    }
   }
 
   @override

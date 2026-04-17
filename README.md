@@ -452,10 +452,11 @@ susanoo/
 │   ├── app/
 │   │   ├── api/
 │   │   │   ├── auth.py               # OTP login, JWT tokens
-│   │   │   ├── workers.py            # Registration, dashboard, earnings
+│   │   │   ├── workers.py            # Registration, dashboard, earnings, FCM token
 │   │   │   ├── policies.py           # Buy policy, Razorpay, quote
-│   │   │   ├── claims.py             # Trigger claim, city pools, GPS fraud
+│   │   │   ├── claims.py             # Trigger claim, city pools, GPS fraud, zone stats
 │   │   │   ├── disruptions.py        # Simulate, list active events
+│   │   │   ├── notifications.py      # In-app notification feed + mark-read
 │   │   │   ├── payouts.py            # Payout history
 │   │   │   ├── actuarial.py          # BCR, stress test, premium formula
 │   │   │   ├── location.py           # GPS ping + spoof detection + /weather endpoint
@@ -465,8 +466,9 @@ susanoo/
 │   │   └── services/
 │   │       ├── premium_service.py    # XGBoost + rule-based premium
 │   │       ├── disruption_service.py # 5 triggers + hyper-local DSS
-│   │       ├── fraud_service.py      # Rule-based fraud scoring
+│   │       ├── fraud_service.py      # Rule-based + individual baseline + zone-level fraud scoring
 │   │       ├── payout_service.py     # UPI + IMPS + rollback + SMS
+│   │       ├── notification_service.py # FCM push + DB-persisted in-app notifications
 │   │       ├── actuarial_service.py  # BCR, stress test
 │   │       ├── auth_service.py       # OTP, JWT, 2Factor.in
 │   │       └── platform_service.py   # Mock platform earnings API
@@ -507,7 +509,40 @@ susanoo/
 
 ## Changelog
 
-### Latest Updates
+### Phase 3 Post-Review Improvements
+
+#### 1. Celery Deployment Robustness
+- Fixed fragile `api → worker → beat` dependency chain in `docker-compose.yml` — `worker` and `beat` now depend directly on `db` and `redis` with health checks, starting independently of the API
+- Added `--scheduler celery.beat:PersistentScheduler` so the beat schedule survives container restarts
+- Fixed missing `from app.config import settings` import in `main.py` that caused the global 500 handler to crash with a `NameError`
+
+#### 2. Notification System
+- **`notification_service.py`** — dual-channel engine: FCM push (optional) + DB-persisted in-app feed. Covers `claim_approved`, `claim_rejected`, `claim_paid`, `disruption_detected`, `policy_expiring`
+- **`WorkerNotification` model** — in-app notification feed table with `is_read` tracking
+- **`Worker.fcm_token`** — stores Firebase push token per device, registered via `POST /api/v1/workers/fcm-token`
+- **`GET /api/v1/notifications`** — mobile app polls its notification feed (last 50)
+- **`POST /api/v1/notifications/{id}/read`** and **`/read-all`** — mark notifications read
+- Notifications wired into `claims.py` at all three lifecycle transitions: approved → rejected → paid
+- FCM key is optional — without it, notifications are DB-only (in-app feed still works, SMS on payout still fires)
+
+#### 3. Enhanced Fraud Detection — Individual vs Zone-Level Behavioral Analysis
+- **Individual behavioral baseline** — compares current week's claims to the worker's own 12-week historical average. A worker who normally claims 0.5×/week suddenly claiming 4× is flagged (`INDIVIDUAL_BASELINE_SPIKE: +20`), not just anyone with 3+ claims
+- **Zone-level corroboration** — if <5% of workers in the same pincode zone claimed this event, the event isn't corroborated (`ZONE_LOW_CORROBORATION: +15`); if >90% claimed, it's flagged as a coordinated fraud ring (`ZONE_COORDINATED_FRAUD_RISK: +20`)
+- Zone stats (claim count + total active workers per pincode prefix) queried in `claims.py` and passed into `calculate_fraud_score()`
+
+#### 4. Granular Geographic Risk Assessment — Ward-Level Premiums
+- Added `SUB_ZONE_RISK` dict in `premium_service.py` with full 6-digit pincode multipliers derived from claim density, NDMA flood zone maps, and IMD heat island data
+- Examples: Mumbai Dharavi (`400017: 1.55`) vs Bandra (`400050: 1.25`); Bangalore Koramangala (`560034: 1.40`) vs Whitefield (`560066: 1.10`)
+- `get_sub_zone_risk()` uses ward-level multiplier when available, falls back to 3-digit zone risk
+- A worker in 560034 pays ~27% more than one in 560066 for the same tier — same city, fairer pricing
+
+### Latest Updates (Previous)
+- **Phase 3 Judge Feedback Upgrades** — Added a complete Predictive Analytics HQ to the Admin Dashboard including:
+  - **BCR & Loss Ratio Monitoring**: Real-time actuarial health tracking per city.
+  - **Predictive Forecasts**: Next-week claim volume prediction using XGBoost.
+  - **Fraud Deep-Dive**: Isolation Forest anomaly visualization per claim.
+  - **Actuarial Stress Testing**: Simulation mode for extreme climate events.
+  - **Worker Status Indicator**: Live health monitoring of Celery background polling tasks.
 - **Terms & Conditions** — Professional T&C screen shown on first launch with 5 collapsible sections, 3 consent checkboxes, language picker. Accepted state persisted via SharedPreferences.
 - **Multilingual (i18n)** — Full English / Tamil / Hindi support across all screens. Language picker on phone screen and profile. Persisted across sessions.
 - **Location Permission** — Fixed to trigger native Android OS dialog immediately on first install using `Geolocator.requestPermission()`.
@@ -532,6 +567,23 @@ By combining **parametric insurance mechanics**, **hyper-local infrastructure-aw
 - **Fraud-resistant** — GPS anti-spoofing + network-level ring detection
 - **Accessible** — Full English, Tamil, and Hindi support from first screen to last
 - **Scalable** — Celery workers handle city-wide events for thousands of workers simultaneously
+
+---
+
+## Recent Activity (Git Log)
+
+```text
+* 3265ce4 feat: add systemd service files for Celery worker and beat scheduler
+* 65f7ca6 fix: use Redis for OTP store to fix multi-worker race condition
+* fb3bdf4 fix: switch Flutter app API URL from Render to AWS EC2
+* 3894ca8 ci: switch backend to AWS EC2 ap-south-2
+* a04ebaa feat: add admin API routes - stats, claims, workers, disruptions
+* 2919f84 Merge pull request #1 from madhan112007/agent-code-9922
+* 985a48d Fix TypeError and 404 error in JavaScript code
+* aece34c ci: trigger redeploy with VITE_API_URL env var
+* 3b8eba2 feat: complete admin dashboard with live API data and lucide-react icons
+* 7eedc36 fix: remove all emojis, replace with Material icons; fix hello greeting i18n
+```
 
 ---
 
