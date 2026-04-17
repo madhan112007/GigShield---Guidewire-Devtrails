@@ -207,4 +207,19 @@ class ApiService {
   Future<void> registerFcmToken(String token) async {
     await _dio.post('/workers/fcm-token', data: {'fcm_token': token});
   }
+
+  // ── Notifications ─────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> listNotifications() async {
+    final res = await _dio.get('/notifications');
+    return res.data;
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    await _dio.post('/notifications/$id/read');
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await _dio.post('/notifications/read-all');
+  }
 }

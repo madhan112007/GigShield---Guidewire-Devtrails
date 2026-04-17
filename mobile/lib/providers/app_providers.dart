@@ -141,6 +141,11 @@ final claimsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   return api.listClaims();
 });
 
+final notificationsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+  final api = ref.watch(apiServiceProvider);
+  return api.listNotifications();
+});
+
 final payoutsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final api = ref.watch(apiServiceProvider);
   return api.listPayouts();

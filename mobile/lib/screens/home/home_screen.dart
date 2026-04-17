@@ -7,6 +7,76 @@ import 'package:susanoo/theme/app_theme.dart';
 import 'package:susanoo/providers/app_providers.dart';
 import 'package:susanoo/utils/constants.dart';
 
+void _showNotifications(BuildContext context, WidgetRef ref, List<dynamic> notifs) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (_) => Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Row(
+            children: [
+              const Text('Notifications', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Spacer(),
+              if (notifs.any((n) => n['is_read'] == false))
+                TextButton(
+                  onPressed: () async {
+                    await ref.read(apiServiceProvider).markAllNotificationsRead();
+                    ref.invalidate(notificationsProvider);
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  child: const Text('Mark all read'),
+                ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: notifs.isEmpty
+              ? const Center(child: Text('No notifications yet', style: TextStyle(color: Colors.grey)))
+              : ListView.separated(
+                  itemCount: notifs.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final n = notifs[i] as Map<String, dynamic>;
+                    final isRead = n['is_read'] == true;
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: isRead ? Colors.grey.shade100 : AppTheme.primaryLight,
+                        child: Icon(
+                          _notifIcon(n['notif_type'] as String? ?? ''),
+                          color: isRead ? Colors.grey : AppTheme.primary,
+                          size: 18,
+                        ),
+                      ),
+                      title: Text(n['title'] ?? '', style: TextStyle(fontWeight: isRead ? FontWeight.w400 : FontWeight.w700, fontSize: 14)),
+                      subtitle: Text(n['body'] ?? '', style: const TextStyle(fontSize: 12)),
+                      tileColor: isRead ? null : AppTheme.primaryLight.withOpacity(0.3),
+                      onTap: () async {
+                        await ref.read(apiServiceProvider).markNotificationRead(n['id'] as String);
+                        ref.invalidate(notificationsProvider);
+                      },
+                    );
+                  },
+                ),
+        ),
+      ],
+    ),
+  );
+}
+
+IconData _notifIcon(String type) {
+  switch (type) {
+    case 'claim_approved': return Icons.thumb_up_rounded;
+    case 'claim_paid': return Icons.payments_rounded;
+    case 'claim_rejected': return Icons.cancel_rounded;
+    case 'disruption_detected': return Icons.warning_rounded;
+    case 'policy_expiring': return Icons.timer_rounded;
+    default: return Icons.notifications_rounded;
+  }
+}
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -108,7 +178,11 @@ class HomeScreen extends ConsumerWidget {
                             icon: Icons.cloud_rounded,
                             label: s.simulateEvent,
                             color: AppTheme.warning,
-                            onTap: () => _simulate(context, ref, worker['city'] ?? 'Bangalore', worker['pincode'] ?? '560001'),
+                            onTap: () => _simulate(
+                context, ref,
+                (worker['city'] as String?)?.isNotEmpty == true ? worker['city'] as String : 'Bangalore',
+                (worker['pincode'] as String?)?.isNotEmpty == true ? worker['pincode'] as String : '560001',
+              ),
                           )),
                         ],
                       ],
@@ -213,7 +287,31 @@ class HomeScreen extends ConsumerWidget {
                   color: AppTheme.primaryLight,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.notifications_outlined, color: AppTheme.primary),
+                child: Consumer(
+                  builder: (context, ref, _) {
+                    final notifs = ref.watch(notificationsProvider).valueOrNull ?? [];
+                    final unread = notifs.where((n) => n['is_read'] == false).length;
+                    return Stack(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.notifications_outlined, color: AppTheme.primary),
+                          onPressed: () => _showNotifications(context, ref, notifs),
+                        ),
+                        if (unread > 0)
+                          Positioned(
+                            right: 8, top: 8,
+                            child: Container(
+                              width: 8, height: 8,
+                              decoration: const BoxDecoration(
+                                color: AppTheme.danger,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ],
           ),
