@@ -95,15 +95,20 @@ async def get_dashboard(
     """Get worker dashboard data"""
     from datetime import datetime, timezone
 
-    # Active policy
+    now = datetime.now(timezone.utc)
     result = await db.execute(
         select(Policy).where(
             Policy.worker_id == current_worker.id,
             Policy.status == PolicyStatus.ACTIVE,
-            Policy.end_date >= datetime.now(timezone.utc),
-        )
+        ).order_by(Policy.created_at.desc())
     )
-    active_policy = result.scalar_one_or_none()
+    all_policies = result.scalars().all()
+    active_policy = None
+    for p in all_policies:
+        end = p.end_date.replace(tzinfo=timezone.utc) if p.end_date.tzinfo is None else p.end_date
+        if end >= now:
+            active_policy = p
+            break
 
     # Recent claims (last 5)
     result = await db.execute(
