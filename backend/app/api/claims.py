@@ -68,11 +68,16 @@ async def trigger_claim(
         select(Policy).where(
             Policy.worker_id == current_worker.id,
             Policy.status == PolicyStatus.ACTIVE,
-            Policy.end_date >= now,
         ).order_by(Policy.created_at.desc())
         .with_for_update()
     )
-    policy = result.scalars().first()
+    all_active = result.scalars().all()
+    policy = None
+    for p in all_active:
+        end = p.end_date.replace(tzinfo=timezone.utc) if p.end_date.tzinfo is None else p.end_date
+        if end >= now:
+            policy = p
+            break
     if not policy:
         raise HTTPException(status_code=400, detail="No active policy found")
     
