@@ -37,10 +37,10 @@ async def simulate_disruption(
     """Simulate disruptions — always creates at least one event for demo."""
     from app.models.models import DisruptionType, DisruptionSeverity
     from app.services.disruption_service import get_dss
+    from datetime import timedelta, timezone
 
     events_data = await check_disruptions(city=city, pincode=pincode)
 
-    # Guarantee at least one event for demo purposes
     if not events_data:
         events_data = [{
             "disruption_type": DisruptionType.HEAVY_RAIN,
@@ -52,15 +52,31 @@ async def simulate_disruption(
             "description": "64.5mm/hr rainfall (Heavy) - Simulated",
             "source": "OpenWeather API (Simulated)",
         }]
+
     events = []
-    now_utc = datetime.utcnow()
+    now_utc = datetime.now(timezone.utc)
+    cutoff = now_utc - timedelta(minutes=5)
 
     for e in events_data:
+        # Deduplicate: reuse existing active event of same type in last 5 min
+        dup = await db.execute(
+            select(DisruptionEvent).where(
+                DisruptionEvent.city == city,
+                DisruptionEvent.disruption_type == e["disruption_type"],
+                DisruptionEvent.is_active == True,
+                DisruptionEvent.started_at >= cutoff,
+            )
+        )
+        existing = dup.scalar_one_or_none()
+        if existing:
+            events.append(existing)
+            continue
+
         event = DisruptionEvent(
             disruption_type=e["disruption_type"],
             severity=e["severity"],
-            city=e["city"],
-            pincode=e["pincode"],
+            city=city,
+            pincode=pincode,
             dss_multiplier=e["dss_multiplier"],
             raw_value=e.get("raw_value"),
             description=e.get("description"),

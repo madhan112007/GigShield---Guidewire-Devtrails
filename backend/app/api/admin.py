@@ -106,7 +106,7 @@ async def list_all_claims(db: AsyncSession = Depends(get_db)):
             "city": w.city,
             "event": f"{e.disruption_type.value.replace('_', ' ').capitalize()}",
             "amount": f"₹{c.claimed_amount}",
-            "fraud": int(c.fraud_score * 100),
+            "fraud": int(c.fraud_score) if c.fraud_score else 0,
             "status": c.status.value
         })
     return claims
