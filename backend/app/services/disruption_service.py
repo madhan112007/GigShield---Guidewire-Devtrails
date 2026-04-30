@@ -6,6 +6,7 @@ Rural/tier-3 areas have poor transport -> higher DSS for same event.
 """
 import httpx
 import random
+import tweepy
 from datetime import datetime
 from typing import Optional
 from app.config import settings
@@ -172,6 +173,10 @@ TRAFFIC_SCENARIOS = {
 }
 
 
+def is_real_api_key(value: Optional[str]) -> bool:
+    return bool(value and value != "mock_key" and not value.startswith("your_"))
+
+
 async def fetch_weather_mock(city: str) -> dict:
     mock_scenarios = {
         "Mumbai": {"rainfall_mm_per_hr": random.choice([0, 0, 0, 45.0, 75.0, 120.0]), "temperature_c": random.uniform(28, 34), "description": "Moderate rain"},
@@ -198,7 +203,7 @@ async def fetch_aqi_real(city: str) -> dict:
     async with httpx.AsyncClient() as client:
         try:
             r = await client.get(
-                "http://api.openweathermap.org/data/2.5/air_pollution",
+                "https://api.openweathermap.org/data/2.5/air_pollution",
                 params={"lat": coords[0], "lon": coords[1], "appid": settings.OPENWEATHER_API_KEY},
                 timeout=5.0,
             )
@@ -223,8 +228,9 @@ async def fetch_aqi_mock(city: str) -> dict:
 
 async def fetch_civic_real(city: str) -> Optional[tuple]:
     """Real civic emergency detection via NewsAPI — scans for bandh/curfew/strike news."""
-    if settings.NEWSAPI_KEY == "mock_key":
-        return fetch_civic_mock(city)
+    if not is_real_api_key(settings.NEWSAPI_KEY):
+        return await fetch_civic_twitter_dev_fallback(city)
+
     keywords = f"({city} bandh) OR ({city} curfew) OR ({city} strike) OR ({city} Section 144) OR ({city} shutdown)"
     try:
         async with httpx.AsyncClient() as client:
@@ -242,8 +248,8 @@ async def fetch_civic_real(city: str) -> Optional[tuple]:
             data = r.json()
             articles = data.get("articles", [])
             if not articles:
-                return None
-            # Classify severity based on keywords in title
+                return await fetch_civic_twitter_dev_fallback(city)
+
             title = (articles[0].get("title") or "").lower()
             desc = (articles[0].get("description") or "").lower()
             combined = title + " " + desc
@@ -255,10 +261,50 @@ async def fetch_civic_real(city: str) -> Optional[tuple]:
                 civic_type = "strike"
             else:
                 return None
+
             description = articles[0].get("title", "Civic disruption detected")[:120]
             return severity, description, civic_type
     except Exception as e:
         print("[NewsAPI ERROR] " + str(e))
+        return await fetch_civic_twitter_dev_fallback(city)
+
+
+async def fetch_civic_twitter_dev_fallback(city: str) -> Optional[tuple]:
+    """Use Twitter/X only as a development fallback for civic disruption detection."""
+    if settings.ENVIRONMENT == "production":
+        return fetch_civic_mock(city)
+    if not is_real_api_key(settings.TWITTER_BEARER_TOKEN):
+        return fetch_civic_mock(city)
+
+    keywords = f"({city} bandh) OR ({city} curfew) OR ({city} strike) OR ({city} Section 144) OR ({city} shutdown)"
+    try:
+        client = tweepy.Client(bearer_token=settings.TWITTER_BEARER_TOKEN)
+        tweets = client.search_recent_tweets(
+            query=keywords,
+            max_results=10,
+            tweet_fields=["created_at", "public_metrics"],
+            expansions=["author_id"],
+        )
+        if not tweets.data:
+            return None
+
+        latest_tweet = tweets.data[0]
+        text = latest_tweet.text.lower()
+        if any(w in text for w in ["curfew", "section 144", "shutdown", "complete bandh"]):
+            severity = DisruptionSeverity.SEVERE
+            civic_type = "curfew"
+        elif any(w in text for w in ["bandh", "strike", "protest", "blockade"]):
+            severity = DisruptionSeverity.MODERATE
+            civic_type = "strike"
+        else:
+            return None
+
+        return severity, latest_tweet.text[:120], civic_type
+    except tweepy.TweepyException as e:
+        print("[Twitter API FALLBACK ERROR] " + str(e))
+        return fetch_civic_mock(city)
+    except Exception as e:
+        print("[Twitter API FALLBACK ERROR] Unexpected error: " + str(e))
         return fetch_civic_mock(city)
 
 

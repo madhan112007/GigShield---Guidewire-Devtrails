@@ -45,19 +45,17 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   void _verify(String otp) async {
     if (otp.length != 6) return;
-    // Set dev mode if using 123456
-    if (otp == '123456') {
-      ref.read(devModeProvider.notifier).state = true;
-    }
-    final isNew = await ref.read(authProvider.notifier).verifyOtp(widget.phone, otp);
+    final isNew =
+        await ref.read(authProvider.notifier).verifyOtp(widget.phone, otp);
     if (!mounted) return;
     if (ref.read(authProvider).error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(ref.read(authProvider).error!), backgroundColor: AppTheme.danger),
+        SnackBar(
+            content: Text(ref.read(authProvider).error!),
+            backgroundColor: AppTheme.danger),
       );
       return;
     }
-    // Register FCM token after successful login
     _registerFcmToken();
     context.go(isNew ? '/auth/register' : '/home');
   }
@@ -67,9 +65,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     if (token != null) {
       try {
         await ref.read(apiServiceProvider).registerFcmToken(token);
-        print('[FCM] Token registered: ${token.substring(0, 20)}...');
       } catch (e) {
-        print('[FCM] Token registration failed: $e');
+        debugPrint('[FCM] Token registration failed');
       }
     }
   }
@@ -80,7 +77,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     final defaultPinTheme = PinTheme(
       width: 56,
       height: 60,
-      textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+      textStyle: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: AppTheme.textPrimary),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: AppTheme.divider),
@@ -97,16 +97,20 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
-              const Text('Enter OTP', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
+              const Text('Enter OTP',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
               RichText(
                 text: TextSpan(
-                  style: const TextStyle(fontSize: 16, color: AppTheme.textSecondary),
+                  style: const TextStyle(
+                      fontSize: 16, color: AppTheme.textSecondary),
                   children: [
                     const TextSpan(text: 'We sent a 6-digit code to\n'),
                     TextSpan(
                       text: widget.phone,
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary),
                     ),
                   ],
                 ),
@@ -126,7 +130,8 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                     Expanded(
                       child: Text(
                         'You may receive a call from +91 8031492487 with your OTP. Do not share it with anyone.',
-                        style: TextStyle(fontSize: 12, color: AppTheme.primary, height: 1.5),
+                        style: TextStyle(
+                            fontSize: 12, color: AppTheme.primary, height: 1.5),
                       ),
                     ),
                   ],

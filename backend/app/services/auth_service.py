@@ -1,8 +1,10 @@
 import random
 import httpx
 import redis as redis_client
+import hmac
 from datetime import datetime, timedelta
 from typing import Optional
+from dataclasses import dataclass
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
@@ -15,6 +17,12 @@ from app.models.models import Worker
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
+
+
+@dataclass
+class AuthContext:
+    worker: Worker
+    is_dev_mode: bool
 
 # Redis-backed OTP store — shared across all gunicorn workers
 try:
@@ -44,7 +52,7 @@ async def send_otp_sms(phone: str, otp: str) -> bool:
     """Send OTP via 2Factor.in (free tier: 10k OTPs/month)."""
     api_key = settings.FAST2SMS_API_KEY.strip() if settings.FAST2SMS_API_KEY else ""
     if not api_key or api_key == "mock_key":
-        print("[OTP] " + phone + " = " + otp + " (SMS not configured)")
+        print("[OTP] SMS not configured for " + phone[-4:].rjust(len(phone), "*"))
         return True
     number = phone.strip().lstrip("+")
     if number.startswith("91") and len(number) == 12:
@@ -68,13 +76,16 @@ def generate_otp(phone: str) -> str:
         _redis.setex(f"otp:{phone}", 600, otp)  # expires in 10 min
     else:
         otp_store[phone] = {"otp": otp, "expires": datetime.utcnow() + timedelta(minutes=10)}
-    print("[OTP] Phone: " + phone + " OTP: " + otp)
+    if settings.ENVIRONMENT != "production":
+        print("[OTP] generated for " + phone[-4:].rjust(len(phone), "*"))
     return otp
 
 
 def verify_otp(phone: str, otp: str) -> bool:
-    # Dev shortcut: always accept 123456
-    if otp == "123456":
+    if not otp or len(otp) != 6 or not otp.isdigit():
+        return False
+    # Dev shortcut: accepted only outside production when explicitly enabled.
+    if settings.DEV_OTP_ENABLED and settings.ENVIRONMENT != "production" and otp == "123456":
         if _use_redis:
             _redis.delete(f"otp:{phone}")
         else:
@@ -82,7 +93,7 @@ def verify_otp(phone: str, otp: str) -> bool:
         return True
     if _use_redis:
         stored = _redis.get(f"otp:{phone}")
-        if not stored or stored != otp:
+        if not stored or not hmac.compare_digest(stored, otp):
             return False
         _redis.delete(f"otp:{phone}")
         return True
@@ -92,7 +103,7 @@ def verify_otp(phone: str, otp: str) -> bool:
     if datetime.utcnow() > record["expires"]:
         del otp_store[phone]
         return False
-    if record["otp"] != otp:
+    if not hmac.compare_digest(record["otp"], otp):
         return False
     del otp_store[phone]
     return True
@@ -121,3 +132,28 @@ async def get_current_worker(
     if worker is None:
         raise credentials_exception
     return worker
+
+
+async def get_current_auth_context(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
+) -> AuthContext:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(credentials.credentials, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        worker_id: str = payload.get("sub")
+        token_type: str = payload.get("type")
+        if worker_id is None or token_type != "access":
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    result = await db.execute(select(Worker).where(Worker.id == str(worker_id)))
+    worker = result.scalar_one_or_none()
+    if worker is None:
+        raise credentials_exception
+    return AuthContext(worker=worker, is_dev_mode=bool(payload.get("dev_mode", False)))

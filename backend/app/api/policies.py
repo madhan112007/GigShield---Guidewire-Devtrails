@@ -8,7 +8,7 @@ import hashlib
 from app.database import get_db
 from app.models.models import Worker, Policy, PolicyStatus, PolicyTier
 from app.schemas.schemas import PolicyCreate, PolicyResponse, PremiumQuote, PolicyOrderResponse, PolicyPaymentVerify
-from app.services.auth_service import get_current_worker
+from app.services.auth_service import get_current_worker, get_current_auth_context, AuthContext
 from app.services.premium_service import calculate_premium, BASE_PREMIUMS, MAX_DAILY_PAYOUT, MAX_WEEKLY_PAYOUT
 from app.config import settings
 
@@ -102,10 +102,12 @@ async def get_quote(
 async def create_policy(
     payload: PolicyCreate,
     db: AsyncSession = Depends(get_db),
-    current_worker: Worker = Depends(get_current_worker),
+    auth: AuthContext = Depends(get_current_auth_context),
 ):
     """Direct policy creation — used in dev/mock mode bypassing Razorpay."""
-    return await _activate_policy(payload.tier, payload.pincode, current_worker, db)
+    if not settings.DEMO_MODE_ENABLED or not auth.is_dev_mode or settings.ENVIRONMENT == "production":
+        raise HTTPException(status_code=403, detail="Direct policy creation is available only in dev mode")
+    return await _activate_policy(payload.tier, payload.pincode, auth.worker, db)
 
 
 @router.get("/", response_model=list[PolicyResponse])

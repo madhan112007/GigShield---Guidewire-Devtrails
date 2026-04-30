@@ -11,6 +11,7 @@ android {
     ndkVersion flutter.ndkVersion
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
@@ -32,13 +33,34 @@ android {
         multiDexEnabled true
     }
 
-    buildTypes {
+    signingConfigs {
         release {
-            signingConfig signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
+            if (project.hasProperty("RELEASE_STORE_FILE")) {
+                storeFile file(RELEASE_STORE_FILE)
+                storePassword RELEASE_STORE_PASSWORD
+                keyAlias RELEASE_KEY_ALIAS
+                keyPassword RELEASE_KEY_PASSWORD
+            }
         }
     }
+
+    buildTypes {
+        release {
+            if (project.hasProperty("RELEASE_STORE_FILE")) {
+                signingConfig signingConfigs.release
+            } else {
+                // Local install fallback. Configure RELEASE_* properties for Play Store/App Store release builds.
+                signingConfig signingConfigs.debug
+            }
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+}
+
+dependencies {
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.5"
 }
 
 flutter {

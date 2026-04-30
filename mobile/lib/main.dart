@@ -7,9 +7,11 @@ import 'package:susanoo/providers/locale_provider.dart';
 import 'package:susanoo/router/app_router.dart';
 import 'package:susanoo/theme/app_theme.dart';
 import 'package:susanoo/services/firebase_service.dart';
+import 'package:susanoo/utils/constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppConstants.validateRuntimeConfig();
   await FirebaseService.initialize();
   FirebaseService.setupForegroundHandler();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -87,20 +89,26 @@ class _LocationPermissionWrapperState
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.location_off_rounded, color: AppTheme.warning, size: 48),
+            const Icon(Icons.location_off_rounded,
+                color: AppTheme.warning, size: 48),
             const SizedBox(height: 16),
             Text(s.locationNeeded,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                 textAlign: TextAlign.center),
             const SizedBox(height: 12),
             Text(s.locationNeededDesc,
-                style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary, height: 1.5),
+                style: const TextStyle(
+                    fontSize: 14, color: AppTheme.textSecondary, height: 1.5),
                 textAlign: TextAlign.center),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () { Navigator.pop(context); openAppSettings(); },
+                onPressed: () {
+                  Navigator.pop(context);
+                  openAppSettings();
+                },
                 child: Text(s.openSettings),
               ),
             ),
@@ -109,7 +117,8 @@ class _LocationPermissionWrapperState
               width: double.infinity,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text(s.notNow, style: const TextStyle(color: AppTheme.textSecondary)),
+                child: Text(s.notNow,
+                    style: const TextStyle(color: AppTheme.textSecondary)),
               ),
             ),
           ],
@@ -131,16 +140,20 @@ class _LocationPermissionWrapperState
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(color: AppTheme.primaryLight, shape: BoxShape.circle),
-              child: const Icon(Icons.location_on_rounded, color: AppTheme.primary, size: 36),
+              decoration: const BoxDecoration(
+                  color: AppTheme.primaryLight, shape: BoxShape.circle),
+              child: const Icon(Icons.location_on_rounded,
+                  color: AppTheme.primary, size: 36),
             ),
             const SizedBox(height: 20),
             Text(s.allowLocation,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
                 textAlign: TextAlign.center),
             const SizedBox(height: 12),
             Text(s.allowLocationDesc,
-                style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary, height: 1.5),
+                style: const TextStyle(
+                    fontSize: 14, color: AppTheme.textSecondary, height: 1.5),
                 textAlign: TextAlign.center),
             const SizedBox(height: 8),
             Container(
@@ -152,11 +165,13 @@ class _LocationPermissionWrapperState
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFFF59E0B)),
+                  const Icon(Icons.info_outline_rounded,
+                      size: 14, color: Color(0xFFF59E0B)),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(s.changeAnytime,
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF78350F))),
+                        style: const TextStyle(
+                            fontSize: 11, color: Color(0xFF78350F))),
                   ),
                 ],
               ),
@@ -174,7 +189,8 @@ class _LocationPermissionWrapperState
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(s.allowLocationDesc),
-                        action: SnackBarAction(label: s.openSettings, onPressed: openAppSettings),
+                        action: SnackBarAction(
+                            label: s.openSettings, onPressed: openAppSettings),
                       ),
                     );
                   }
@@ -187,7 +203,8 @@ class _LocationPermissionWrapperState
               width: double.infinity,
               child: TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text(s.notNow, style: const TextStyle(color: AppTheme.textSecondary)),
+                child: Text(s.notNow,
+                    style: const TextStyle(color: AppTheme.textSecondary)),
               ),
             ),
           ],

@@ -36,6 +36,21 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
   void _buy(String tier) async {
     setState(() => _purchasing = true);
     try {
+      if (ref.read(devModeProvider)) {
+        await ref.read(apiServiceProvider).createPolicy(tier);
+        ref.invalidate(activePolicyProvider);
+        ref.invalidate(dashboardProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Demo policy activated.'),
+                backgroundColor: AppTheme.success),
+          );
+          context.go('/policy');
+        }
+        return;
+      }
+
       final order = await ref.read(apiServiceProvider).createPolicyOrder(tier);
       _pendingOrder = {'order': order, 'tier': tier};
 
@@ -45,7 +60,8 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
         'amount': order['amount'],
         'currency': 'INR',
         'name': 'Susanoo',
-        'description': '${AppConstants.tierLabels[tier] ?? tier} — Weekly Policy',
+        'description':
+            '${AppConstants.tierLabels[tier] ?? tier} — Weekly Policy',
         'prefill': {'contact': '', 'email': 'worker@susanoo.in'},
         'theme': {'color': '#1A56DB'},
         'modal': {'confirm_close': true},
@@ -53,7 +69,8 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
+          SnackBar(
+              content: Text('Error: $e'), backgroundColor: AppTheme.danger),
         );
       }
     } finally {
@@ -63,13 +80,13 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
 
   void _onPaymentSuccess(PaymentSuccessResponse response) async {
     final order = _pendingOrder?['order'] as Map<String, dynamic>?;
-    final tier  = _pendingOrder?['tier']  as String?;
+    final tier = _pendingOrder?['tier'] as String?;
     if (order == null || tier == null) return;
     try {
       await ref.read(apiServiceProvider).verifyPolicyPayment({
-        'razorpay_order_id':   response.orderId,
+        'razorpay_order_id': response.orderId,
         'razorpay_payment_id': response.paymentId,
-        'razorpay_signature':  response.signature,
+        'razorpay_signature': response.signature,
         'tier': tier,
       });
       ref.invalidate(activePolicyProvider);
@@ -86,7 +103,9 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Verification failed: $e'), backgroundColor: AppTheme.danger),
+          SnackBar(
+              content: Text('Verification failed: $e'),
+              backgroundColor: AppTheme.danger),
         );
       }
     }
@@ -108,7 +127,7 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedTier = ref.watch(selectedTierProvider);
-    final quoteAsync   = ref.watch(premiumQuoteProvider(selectedTier));
+    final quoteAsync = ref.watch(premiumQuoteProvider(selectedTier));
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
@@ -127,25 +146,27 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
                 children: [
                   const Text(
                     'Weekly income protection\nstarting from ₹29/week',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, height: 1.3),
+                    style: TextStyle(
+                        fontSize: 20, fontWeight: FontWeight.w700, height: 1.3),
                   ),
                   const SizedBox(height: 6),
                   const Text(
                     'Cancel anytime. Coverage renews every 7 days.',
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                    style:
+                        TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                   ),
                   const SizedBox(height: 24),
-
                   ..._tiers.map((t) => _TierCard(
-                    tier: t,
-                    selected: selectedTier == t['value'],
-                    onSelect: () => ref.read(selectedTierProvider.notifier).state = t['value']!,
-                  )),
-
+                        tier: t,
+                        selected: selectedTier == t['value'],
+                        onSelect: () => ref
+                            .read(selectedTierProvider.notifier)
+                            .state = t['value']!,
+                      )),
                   const SizedBox(height: 24),
-
                   quoteAsync.when(
-                    loading: () => const Center(child: CircularProgressIndicator()),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
                     error: (_, __) => const SizedBox.shrink(),
                     data: (quote) => _QuoteBreakdown(quote: quote),
                   ),
@@ -159,7 +180,8 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
             padding: const EdgeInsets.all(20),
             decoration: const BoxDecoration(
               color: Colors.white,
-              border: Border(top: BorderSide(color: AppTheme.divider, width: 0.5)),
+              border:
+                  Border(top: BorderSide(color: AppTheme.divider, width: 0.5)),
             ),
             child: quoteAsync.when(
               loading: () => const SizedBox(height: 56),
@@ -167,9 +189,13 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
               data: (quote) => ElevatedButton(
                 onPressed: _purchasing ? null : () => _buy(selectedTier),
                 child: _purchasing
-                    ? const SizedBox(height: 20, width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : Text('Pay ₹${(quote['adjusted_premium'] as num).toStringAsFixed(0)} via Razorpay'),
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                    : Text(
+                        'Pay ₹${(quote['adjusted_premium'] as num).toStringAsFixed(0)} via Razorpay'),
               ),
             ),
           ),
@@ -211,7 +237,8 @@ class _TierCard extends StatelessWidget {
   final Map<String, String> tier;
   final bool selected;
   final VoidCallback onSelect;
-  const _TierCard({required this.tier, required this.selected, required this.onSelect});
+  const _TierCard(
+      {required this.tier, required this.selected, required this.onSelect});
 
   @override
   Widget build(BuildContext context) {
@@ -235,21 +262,38 @@ class _TierCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(tier['label']!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                Text(tier['label']!,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 16)),
                 const Spacer(),
                 if (isPopular)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(6)),
-                    child: const Text('POPULAR', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                        color: AppTheme.primary,
+                        borderRadius: BorderRadius.circular(6)),
+                    child: const Text('POPULAR',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700)),
                   ),
                 const SizedBox(width: 8),
-                Text(tier['price']!, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20, color: AppTheme.primary)),
-                const Text('/wk', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                Text(tier['price']!,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 20,
+                        color: AppTheme.primary)),
+                const Text('/wk',
+                    style:
+                        TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
               ],
             ),
             const SizedBox(height: 6),
-            Text(tier['desc']!, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            Text(tier['desc']!,
+                style: const TextStyle(
+                    color: AppTheme.textSecondary, fontSize: 13)),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -278,7 +322,9 @@ class _Pill extends StatelessWidget {
         color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(text, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      child: Text(text,
+          style: TextStyle(
+              color: color, fontSize: 11, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -289,10 +335,10 @@ class _QuoteBreakdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final base     = (quote['base_premium']          as num).toStringAsFixed(0);
-    final adjusted = (quote['adjusted_premium']       as num).toStringAsFixed(2);
-    final zone     = (quote['zone_risk_multiplier']   as num).toStringAsFixed(2);
-    final season   = (quote['season_factor']          as num).toStringAsFixed(2);
+    final base = (quote['base_premium'] as num).toStringAsFixed(0);
+    final adjusted = (quote['adjusted_premium'] as num).toStringAsFixed(2);
+    final zone = (quote['zone_risk_multiplier'] as num).toStringAsFixed(2);
+    final season = (quote['season_factor'] as num).toStringAsFixed(2);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -308,15 +354,16 @@ class _QuoteBreakdown extends StatelessWidget {
             children: [
               Icon(Icons.auto_awesome, color: AppTheme.primary, size: 16),
               SizedBox(width: 6),
-              Text('AI-Adjusted Premium', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              Text('AI-Adjusted Premium',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
             ],
           ),
           const SizedBox(height: 12),
-          _Row('Base premium',       '₹$base'),
-          _Row('Zone risk factor',   '×$zone'),
-          _Row('Season factor',      '×$season'),
+          _Row('Base premium', '₹$base'),
+          _Row('Zone risk factor', '×$zone'),
+          _Row('Season factor', '×$season'),
           const Divider(),
-          _Row('Your weekly premium','₹$adjusted', bold: true),
+          _Row('Your weekly premium', '₹$adjusted', bold: true),
         ],
       ),
     );
@@ -328,12 +375,15 @@ class _QuoteBreakdown extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(
-            color: bold ? AppTheme.textPrimary : AppTheme.textSecondary, fontSize: 13)),
-          Text(val, style: TextStyle(
-            fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
-            fontSize: 13,
-            color: bold ? AppTheme.primary : AppTheme.textPrimary)),
+          Text(label,
+              style: TextStyle(
+                  color: bold ? AppTheme.textPrimary : AppTheme.textSecondary,
+                  fontSize: 13)),
+          Text(val,
+              style: TextStyle(
+                  fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
+                  fontSize: 13,
+                  color: bold ? AppTheme.primary : AppTheme.textPrimary)),
         ],
       ),
     );

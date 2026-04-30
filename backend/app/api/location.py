@@ -161,7 +161,7 @@ async def get_weather_by_location(
         # AQI by coordinates
         try:
             ar = await client.get(
-                "http://api.openweathermap.org/data/2.5/air_pollution",
+                "https://api.openweathermap.org/data/2.5/air_pollution",
                 params={"lat": lat, "lon": lon, "appid": api_key},
             )
             ad = ar.json()

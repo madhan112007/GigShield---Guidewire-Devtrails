@@ -21,7 +21,9 @@ class PolicyScreen extends ConsumerWidget {
       body: policyAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => _NoPolicyView(s: s),
-        data: (policy) => policy == null ? _NoPolicyView(s: s) : _ActivePolicyView(policy: policy),
+        data: (policy) => policy == null
+            ? _NoPolicyView(s: s)
+            : _ActivePolicyView(policy: policy),
       ),
     );
   }
@@ -41,15 +43,20 @@ class _NoPolicyView extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(color: AppTheme.primaryLight, shape: BoxShape.circle),
-              child: const Icon(Icons.shield_outlined, size: 56, color: AppTheme.primary),
+              decoration: const BoxDecoration(
+                  color: AppTheme.primaryLight, shape: BoxShape.circle),
+              child: const Icon(Icons.shield_outlined,
+                  size: 56, color: AppTheme.primary),
             ),
             const SizedBox(height: 24),
-            Text(s.noActivePolicy, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+            Text(s.noActivePolicy,
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
             const SizedBox(height: 8),
             Text(
               s.protectionDesc,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
+              style:
+                  const TextStyle(color: AppTheme.textSecondary, fontSize: 15),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
@@ -73,10 +80,14 @@ class _ActivePolicyView extends ConsumerWidget {
     final s = ref.watch(stringsProvider);
     final tier = policy['tier'] as String? ?? '';
     final tierLabel = AppConstants.tierLabels[tier] ?? tier;
-    final premium = (policy['weekly_premium'] as num?)?.toStringAsFixed(2) ?? '-';
-    final maxDaily = (policy['max_daily_payout'] as num?)?.toStringAsFixed(0) ?? '-';
-    final maxWeekly = (policy['max_weekly_payout'] as num?)?.toStringAsFixed(0) ?? '-';
-    final totalClaimed = (policy['total_claimed'] as num?)?.toStringAsFixed(0) ?? '0';
+    final premium =
+        (policy['weekly_premium'] as num?)?.toStringAsFixed(2) ?? '-';
+    final maxDaily =
+        (policy['max_daily_payout'] as num?)?.toStringAsFixed(0) ?? '-';
+    final maxWeekly =
+        (policy['max_weekly_payout'] as num?)?.toStringAsFixed(0) ?? '-';
+    final totalClaimed =
+        (policy['total_claimed'] as num?)?.toStringAsFixed(0) ?? '0';
     final claimsCount = policy['claims_count'] ?? 0;
     final startDate = policy['start_date'] != null
         ? DateFormat('dd MMM yyyy').format(DateTime.parse(policy['start_date']))
@@ -107,24 +118,40 @@ class _ActivePolicyView extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.shield_rounded, color: Colors.white, size: 24),
+                    const Icon(Icons.shield_rounded,
+                        color: Colors.white, size: 24),
                     const SizedBox(width: 8),
-                    Text(tierLabel, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18)),
+                    Text(tierLabel,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 18)),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(s.active.toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12)),
+                      child: Text(s.active.toUpperCase(),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12)),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-                Text('₹$premium/week', style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800)),
+                Text('₹$premium/week',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800)),
                 const SizedBox(height: 4),
-                Text('$startDate → $endDate', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13)),
+                Text('$startDate → $endDate',
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.8), fontSize: 13)),
               ],
             ),
           ),
@@ -132,7 +159,9 @@ class _ActivePolicyView extends ConsumerWidget {
           const SizedBox(height: 20),
 
           // Coverage details
-          Text(s.coverageDetails, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          Text(s.coverageDetails,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           _DetailRow(label: s.maxDailyPayout, value: '₹$maxDaily'),
           _DetailRow(label: s.maxWeeklyPayout, value: '₹$maxWeekly'),
@@ -142,11 +171,15 @@ class _ActivePolicyView extends ConsumerWidget {
           const SizedBox(height: 20),
 
           // Triggers covered
-          Text(s.triggersCovered, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          Text(s.triggersCovered,
+              style:
+                  const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           Wrap(
-            spacing: 8, runSpacing: 8,
-            children: _getTriggers(tier).map((t) => Chip(label: Text(t))).toList(),
+            spacing: 8,
+            runSpacing: 8,
+            children:
+                _getTriggers(tier).map((t) => Chip(label: Text(t))).toList(),
           ),
 
           const SizedBox(height: 20),
@@ -161,10 +194,20 @@ class _ActivePolicyView extends ConsumerWidget {
 
   List<String> _getTriggers(String tier) {
     switch (tier) {
-      case 'basic': return ['Heavy Rain'];
-      case 'smart': return ['Heavy Rain', 'Extreme Heat', 'AQI Spike'];
-      case 'pro':   return ['Heavy Rain', 'Extreme Heat', 'AQI Spike', 'Traffic', 'Emergency'];
-      default: return [];
+      case 'basic':
+        return ['Heavy Rain'];
+      case 'smart':
+        return ['Heavy Rain', 'Extreme Heat', 'AQI Spike'];
+      case 'pro':
+        return [
+          'Heavy Rain',
+          'Extreme Heat',
+          'AQI Spike',
+          'Traffic',
+          'Emergency'
+        ];
+      default:
+        return [];
     }
   }
 }
@@ -186,8 +229,12 @@ class _DetailRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+          Text(label,
+              style:
+                  const TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+          Text(value,
+              style:
+                  const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
         ],
       ),
     );

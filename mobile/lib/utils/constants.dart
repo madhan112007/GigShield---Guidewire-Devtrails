@@ -3,10 +3,13 @@ class AppConstants {
     'BASE_URL',
     defaultValue: 'http://16.112.121.102:8000/api/v1',
   );
+  static const bool allowInsecureHttp =
+      bool.fromEnvironment('ALLOW_INSECURE_HTTP', defaultValue: true);
 
   static const String accessTokenKey = 'access_token';
   static const String refreshTokenKey = 'refresh_token';
   static const String workerIdKey = 'worker_id';
+  static const String devModeKey = 'dev_mode';
   static const String onboardingDoneKey = 'onboarding_done';
   static const String termsAcceptedKey = 'terms_accepted';
 
@@ -33,11 +36,11 @@ class AppConstants {
 
   // Map disruption type to Material icon
   static const Map<String, int> disruptionIcons = {
-    'heavy_rain': 0xe798,        // Icons.water_drop_rounded
-    'extreme_heat': 0xf076b,     // Icons.thermostat_rounded
-    'aqi_spike': 0xe044,         // Icons.air_rounded
+    'heavy_rain': 0xe798, // Icons.water_drop_rounded
+    'extreme_heat': 0xf076b, // Icons.thermostat_rounded
+    'aqi_spike': 0xe044, // Icons.air_rounded
     'traffic_disruption': 0xe531, // Icons.traffic_rounded
-    'civic_emergency': 0xe7f4,   // Icons.emergency_rounded
+    'civic_emergency': 0xe7f4, // Icons.emergency_rounded
   };
 
   static const Map<String, int> severityColors = {
@@ -47,16 +50,36 @@ class AppConstants {
   };
 
   static const List<String> supportedCities = [
-    'Bangalore', 'Mumbai', 'Delhi', 'Chennai',
-    'Hyderabad', 'Pune', 'Kolkata',
+    'Bangalore',
+    'Mumbai',
+    'Delhi',
+    'Chennai',
+    'Hyderabad',
+    'Pune',
+    'Kolkata',
   ];
 
   static const List<Map<String, String>> platforms = [
-    {'value': 'blinkit',          'label': 'Blinkit',          'color': 'F8C002'},
-    {'value': 'zepto',            'label': 'Zepto',            'color': '6C2BF5'},
-    {'value': 'swiggy_instamart', 'label': 'Swiggy Instamart', 'color': 'FC8019'},
-    {'value': 'zomato',           'label': 'Zomato',           'color': 'E23744'},
-    {'value': 'amazon',           'label': 'Amazon',           'color': 'FF9900'},
-    {'value': 'bigbasket',        'label': 'BigBasket',        'color': '84C225'},
+    {'value': 'blinkit', 'label': 'Blinkit', 'color': 'F8C002'},
+    {'value': 'zepto', 'label': 'Zepto', 'color': '6C2BF5'},
+    {
+      'value': 'swiggy_instamart',
+      'label': 'Swiggy Instamart',
+      'color': 'FC8019'
+    },
+    {'value': 'zomato', 'label': 'Zomato', 'color': 'E23744'},
+    {'value': 'amazon', 'label': 'Amazon', 'color': 'FF9900'},
+    {'value': 'bigbasket', 'label': 'BigBasket', 'color': '84C225'},
   ];
+
+  static void validateRuntimeConfig() {
+    final uri = Uri.tryParse(baseUrl);
+    if (uri == null || uri.host.isEmpty) {
+      throw StateError('BASE_URL must be a valid absolute URL');
+    }
+    if (uri.scheme != 'https' && !allowInsecureHttp) {
+      throw StateError(
+          'BASE_URL must use HTTPS. Use --dart-define=ALLOW_INSECURE_HTTP=true only for local dev.');
+    }
+  }
 }

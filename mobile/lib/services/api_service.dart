@@ -4,7 +4,11 @@ import 'package:susanoo/utils/constants.dart';
 
 class ApiService {
   late final Dio _dio;
-  final _storage = const FlutterSecureStorage();
+  final _storage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(
+        accessibility: KeychainAccessibility.first_unlock_this_device),
+  );
 
   ApiService() {
     _dio = Dio(BaseOptions(
@@ -62,6 +66,9 @@ class ApiService {
       final newAccess = res.data['access_token'] as String?;
       if (newAccess == null) return false;
       await _storage.write(key: AppConstants.accessTokenKey, value: newAccess);
+      await _storage.write(
+          key: AppConstants.devModeKey,
+          value: '${res.data['is_dev_mode'] == true}');
       return true;
     } catch (_) {
       return false;
@@ -73,24 +80,34 @@ class ApiService {
   Future<Map<String, dynamic>> sendOtp(String phone) async {
     final res = await _dio.post('/auth/send-otp',
         data: {'phone': phone},
-        options: Options(sendTimeout: const Duration(seconds: 60), receiveTimeout: const Duration(seconds: 60)));
+        options: Options(
+            sendTimeout: const Duration(seconds: 60),
+            receiveTimeout: const Duration(seconds: 60)));
     return res.data;
   }
 
   Future<Map<String, dynamic>> verifyOtp(String phone, String otp) async {
-    final res = await _dio.post('/auth/verify-otp', data: {'phone': phone, 'otp': otp});
+    final res =
+        await _dio.post('/auth/verify-otp', data: {'phone': phone, 'otp': otp});
     return res.data;
   }
 
-  Future<void> saveTokens(String access, String refresh, String workerId) async {
+  Future<void> saveTokens(String access, String refresh, String workerId,
+      {bool isDevMode = false}) async {
     await _storage.write(key: AppConstants.accessTokenKey, value: access);
     await _storage.write(key: AppConstants.refreshTokenKey, value: refresh);
     await _storage.write(key: AppConstants.workerIdKey, value: workerId);
+    await _storage.write(key: AppConstants.devModeKey, value: '$isDevMode');
   }
 
   Future<bool> isLoggedIn() async {
     final token = await _storage.read(key: AppConstants.accessTokenKey);
     return token != null;
+  }
+
+  Future<bool> isDevMode() async {
+    final value = await _storage.read(key: AppConstants.devModeKey);
+    return value == 'true';
   }
 
   Future<void> logout() async {
@@ -110,7 +127,8 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getPlatformEarnings(String platform) async {
-    final res = await _dio.get('/workers/platform-earnings', queryParameters: {'platform': platform});
+    final res = await _dio.get('/workers/platform-earnings',
+        queryParameters: {'platform': platform});
     return res.data;
   }
 
@@ -122,7 +140,8 @@ class ApiService {
   // ── Policies ──────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> getPremiumQuote(String tier) async {
-    final res = await _dio.get('/policies/quote', queryParameters: {'tier': tier});
+    final res =
+        await _dio.get('/policies/quote', queryParameters: {'tier': tier});
     return res.data;
   }
 
@@ -131,7 +150,8 @@ class ApiService {
     return res.data;
   }
 
-  Future<Map<String, dynamic>> verifyPolicyPayment(Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> verifyPolicyPayment(
+      Map<String, dynamic> data) async {
     final res = await _dio.post('/policies/verify-payment', data: data);
     return res.data;
   }
@@ -154,7 +174,8 @@ class ApiService {
   // ── Disruptions ───────────────────────────────────────────────────────────
 
   Future<List<dynamic>> getActiveDisruptions(String city) async {
-    final res = await _dio.get('/disruptions/active', queryParameters: {'city': city});
+    final res =
+        await _dio.get('/disruptions/active', queryParameters: {'city': city});
     return res.data;
   }
 
@@ -185,7 +206,8 @@ class ApiService {
     return res.data;
   }
 
-  Future<Map<String, dynamic>> sendLocationPing(double lat, double lng, double accuracy) async {
+  Future<Map<String, dynamic>> sendLocationPing(
+      double lat, double lng, double accuracy) async {
     final res = await _dio.post('/location/ping', data: {
       'lat': lat,
       'lng': lng,
@@ -199,8 +221,10 @@ class ApiService {
     return res.data;
   }
 
-  Future<Map<String, dynamic>> getWeatherByLocation(double lat, double lon) async {
-    final res = await _dio.get('/location/weather', queryParameters: {'lat': lat, 'lon': lon});
+  Future<Map<String, dynamic>> getWeatherByLocation(
+      double lat, double lon) async {
+    final res = await _dio
+        .get('/location/weather', queryParameters: {'lat': lat, 'lon': lon});
     return res.data;
   }
 

@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:susanoo/providers/locale_provider.dart';
 import 'package:susanoo/theme/app_theme.dart';
 import 'package:susanoo/providers/app_providers.dart';
-import 'package:susanoo/utils/constants.dart';
 
 class ClaimsScreen extends ConsumerWidget {
   const ClaimsScreen({super.key});
@@ -20,7 +19,9 @@ class ClaimsScreen extends ConsumerWidget {
         title: Text(s.claimsHistory),
         backgroundColor: Colors.white,
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: () => ref.invalidate(claimsProvider)),
+          IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () => ref.invalidate(claimsProvider)),
         ],
       ),
       body: claimsAsync.when(
@@ -53,7 +54,9 @@ class _EmptyState extends StatelessWidget {
         children: [
           Icon(Icons.receipt_long_outlined, size: 64, color: AppTheme.textHint),
           const SizedBox(height: 16),
-          Text(s.noClaimsYet, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+          Text(s.noClaimsYet,
+              style:
+                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           Text(
             s.claimsAutoTriggeredDesc,
@@ -84,7 +87,8 @@ class _AnimatedAmountState extends State<_AnimatedAmount>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200));
     _anim = Tween<double>(begin: 0, end: widget.amount)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
     _ctrl.forward();
@@ -102,7 +106,8 @@ class _AnimatedAmountState extends State<_AnimatedAmount>
       animation: _anim,
       builder: (_, __) => Text(
         '₹${_anim.value.toStringAsFixed(0)}',
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: widget.color),
+        style: TextStyle(
+            fontSize: 20, fontWeight: FontWeight.w800, color: widget.color),
       ),
     );
   }
@@ -157,17 +162,35 @@ class _ClaimCardState extends State<_ClaimCard>
     final approved = (claim['approved_amount'] as num?)?.toDouble();
     final displayAmount = approved ?? claimed;
     final dss = ((claim['dss_multiplier'] as num?)?.toDouble() ?? 0) * 100;
-    final fraudScore = (claim['fraud_score'] as num?)?.toStringAsFixed(0) ?? '0';
+    final fraudScore =
+        (claim['fraud_score'] as num?)?.toStringAsFixed(0) ?? '0';
     final autoApproved = claim['auto_approved'] as bool? ?? false;
     final date = claim['created_at'] != null
-        ? DateFormat('dd MMM yyyy, hh:mm a').format(DateTime.parse(claim['created_at'] as String))
+        ? DateFormat('dd MMM yyyy, hh:mm a')
+            .format(DateTime.parse(claim['created_at'] as String))
         : '';
 
     final statusConfig = {
-      'paid':     {'color': AppTheme.success, 'icon': Icons.check_circle_rounded, 'label': s.paid},
-      'approved': {'color': AppTheme.primary,  'icon': Icons.thumb_up_rounded,    'label': s.approved},
-      'rejected': {'color': AppTheme.danger,   'icon': Icons.cancel_rounded,      'label': s.rejected},
-      'pending':  {'color': AppTheme.warning,  'icon': Icons.pending_rounded,     'label': s.pending},
+      'paid': {
+        'color': AppTheme.success,
+        'icon': Icons.check_circle_rounded,
+        'label': s.paid
+      },
+      'approved': {
+        'color': AppTheme.primary,
+        'icon': Icons.thumb_up_rounded,
+        'label': s.approved
+      },
+      'rejected': {
+        'color': AppTheme.danger,
+        'icon': Icons.cancel_rounded,
+        'label': s.rejected
+      },
+      'pending': {
+        'color': AppTheme.warning,
+        'icon': Icons.pending_rounded,
+        'label': s.pending
+      },
     };
     final sc = statusConfig[status] ?? statusConfig['pending']!;
     final color = sc['color'] as Color;
@@ -204,27 +227,39 @@ class _ClaimCardState extends State<_ClaimCard>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('${s.claim} • $date', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          Text('${s.claim} • $date',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600, fontSize: 14)),
                           const SizedBox(height: 2),
                           Row(
                             children: [
                               if (autoApproved)
                                 Container(
                                   margin: const EdgeInsets.only(right: 6),
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
                                     color: AppTheme.primaryLight,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
-                                  child: Text(s.aiAuto, style: const TextStyle(fontSize: 10, color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                                  child: Text(s.aiAuto,
+                                      style: const TextStyle(
+                                          fontSize: 10,
+                                          color: AppTheme.primary,
+                                          fontWeight: FontWeight.w600)),
                                 ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: color.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w700)),
+                                child: Text(label,
+                                    style: TextStyle(
+                                        fontSize: 10,
+                                        color: color,
+                                        fontWeight: FontWeight.w700)),
                               ),
                             ],
                           ),
@@ -237,8 +272,13 @@ class _ClaimCardState extends State<_ClaimCard>
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text('₹${claimed.toStringAsFixed(0)}',
-                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.danger)),
-                              Text(s.rejected, style: const TextStyle(fontSize: 11, color: AppTheme.danger)),
+                                  style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.danger)),
+                              Text(s.rejected,
+                                  style: const TextStyle(
+                                      fontSize: 11, color: AppTheme.danger)),
                             ],
                           )
                         : _AnimatedAmount(amount: displayAmount, color: color),
@@ -246,7 +286,8 @@ class _ClaimCardState extends State<_ClaimCard>
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: const BoxDecoration(
                   color: AppTheme.surface,
                   borderRadius: BorderRadius.only(
@@ -279,9 +320,12 @@ class _Detail extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+        Text(value,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
         const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+        Text(label,
+            style:
+                const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
       ],
     );
   }

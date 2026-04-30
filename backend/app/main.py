@@ -47,9 +47,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+allowed_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,11 +60,11 @@ app.add_middleware(
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     tb = traceback.format_exc()
-    print(f"[500 ERROR] {request.method} {request.url}\n{tb}")
+    print(f"[500 ERROR] {request.method} {request.url.path}\n{tb}")
     
-    response_content = {"detail": str(exc)}
+    response_content = {"detail": "Internal server error"}
     if settings.ENVIRONMENT == "development":
-        response_content["traceback"] = tb
+        response_content = {"detail": str(exc), "traceback": tb}
         
     return JSONResponse(
         status_code=500, 

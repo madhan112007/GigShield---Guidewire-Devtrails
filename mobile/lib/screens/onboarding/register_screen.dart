@@ -14,21 +14,21 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameCtrl = TextEditingController();
-  final _upiCtrl  = TextEditingController();
-  final _formKey  = GlobalKey<FormState>();
+  final _upiCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
   String? _selectedCity;
-  String _pincode      = '560001';
-  bool   _loading      = false;
+  String _pincode = '560001';
+  bool _loading = false;
 
   final Map<String, String> _cityPincode = {
     'Bangalore': '560001',
-    'Mumbai':    '400001',
-    'Delhi':     '110001',
-    'Chennai':   '600001',
+    'Mumbai': '400001',
+    'Delhi': '110001',
+    'Chennai': '600001',
     'Hyderabad': '500001',
-    'Pune':      '411001',
-    'Kolkata':   '700001',
+    'Pune': '411001',
+    'Kolkata': '700001',
   };
 
   @override
@@ -58,7 +58,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
+          SnackBar(
+              content: Text('Error: $e'), backgroundColor: AppTheme.danger),
         );
       }
     } finally {
@@ -69,8 +70,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final platform = ref.watch(authProvider).selectedPlatform ?? 'blinkit';
-    final platformLabel = AppConstants.platforms
-        .firstWhere((p) => p['value'] == platform, orElse: () => {'label': platform})['label']!;
+    final platformLabel = AppConstants.platforms.firstWhere(
+        (p) => p['value'] == platform,
+        orElse: () => {'label': platform})['label']!;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Almost there!')),
@@ -82,15 +84,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Just a few more details', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                const Text('Just a few more details',
+                    style:
+                        TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 6),
-                const Text('Your earnings are already fetched. We just need your name.',
-                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
+                const Text(
+                    'Your earnings are already fetched. We just need your name.',
+                    style:
+                        TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
                 const SizedBox(height: 24),
 
                 // Platform badge (read-only)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryLight,
                     borderRadius: BorderRadius.circular(10),
@@ -98,36 +105,47 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.verified_rounded, color: AppTheme.primary, size: 16),
+                      const Icon(Icons.verified_rounded,
+                          color: AppTheme.primary, size: 16),
                       const SizedBox(width: 8),
                       Text('Platform: $platformLabel',
-                          style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w700, fontSize: 13)),
+                          style: const TextStyle(
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13)),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
 
                 // Name
-                const Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const Text('Full Name',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _nameCtrl,
                   textCapitalization: TextCapitalization.words,
                   decoration: const InputDecoration(hintText: 'Ravi Kumar'),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Enter your name' : null,
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Enter your name' : null,
                 ),
                 const SizedBox(height: 20),
 
                 // City
-                const Text('Your City', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const Text('Your City',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   value: _selectedCity,
-                  decoration: const InputDecoration(hintText: 'Select your city'),
+                  decoration:
+                      const InputDecoration(hintText: 'Select your city'),
                   items: AppConstants.supportedCities
                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                       .toList(),
-                  validator: (v) => v == null ? 'Please select your city' : null,
+                  validator: (v) =>
+                      v == null ? 'Please select your city' : null,
                   onChanged: (v) => setState(() {
                     _selectedCity = v!;
                     _pincode = _cityPincode[v] ?? '560001';
@@ -136,7 +154,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 const SizedBox(height: 20),
 
                 // UPI (optional)
-                const Text('UPI ID (for instant payouts)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                const Text('UPI ID (for instant payouts)',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _upiCtrl,
@@ -155,8 +175,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 ElevatedButton(
                   onPressed: _loading ? null : _submit,
                   child: _loading
-                      ? const SizedBox(height: 20, width: 20,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
                       : const Text('Start Protection →'),
                 ),
               ],

@@ -28,21 +28,30 @@ class AppTheme {
       ),
       scaffoldBackgroundColor: surface,
       textTheme: GoogleFonts.dmSansTextTheme().copyWith(
-        displayLarge: GoogleFonts.dmSans(fontSize: 32, fontWeight: FontWeight.w700, color: textPrimary),
-        headlineLarge: GoogleFonts.dmSans(fontSize: 24, fontWeight: FontWeight.w700, color: textPrimary),
-        headlineMedium: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w600, color: textPrimary),
-        titleLarge: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w600, color: textPrimary),
-        titleMedium: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w500, color: textPrimary),
-        bodyLarge: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w400, color: textPrimary),
-        bodyMedium: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w400, color: textSecondary),
-        labelLarge: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary),
+        displayLarge: GoogleFonts.dmSans(
+            fontSize: 32, fontWeight: FontWeight.w700, color: textPrimary),
+        headlineLarge: GoogleFonts.dmSans(
+            fontSize: 24, fontWeight: FontWeight.w700, color: textPrimary),
+        headlineMedium: GoogleFonts.dmSans(
+            fontSize: 20, fontWeight: FontWeight.w600, color: textPrimary),
+        titleLarge: GoogleFonts.dmSans(
+            fontSize: 18, fontWeight: FontWeight.w600, color: textPrimary),
+        titleMedium: GoogleFonts.dmSans(
+            fontSize: 16, fontWeight: FontWeight.w500, color: textPrimary),
+        bodyLarge: GoogleFonts.dmSans(
+            fontSize: 16, fontWeight: FontWeight.w400, color: textPrimary),
+        bodyMedium: GoogleFonts.dmSans(
+            fontSize: 14, fontWeight: FontWeight.w400, color: textSecondary),
+        labelLarge: GoogleFonts.dmSans(
+            fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0.5,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary),
+        titleTextStyle: GoogleFonts.dmSans(
+            fontSize: 18, fontWeight: FontWeight.w700, color: textPrimary),
         iconTheme: const IconThemeData(color: textPrimary),
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
@@ -54,8 +63,10 @@ class AppTheme {
           backgroundColor: primary,
           foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 56),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          textStyle: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w600),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          textStyle:
+              GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w600),
           elevation: 0,
         ),
       ),
@@ -64,14 +75,17 @@ class AppTheme {
           foregroundColor: primary,
           minimumSize: const Size(double.infinity, 56),
           side: const BorderSide(color: primary, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          textStyle: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w600),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          textStyle:
+              GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: divider),

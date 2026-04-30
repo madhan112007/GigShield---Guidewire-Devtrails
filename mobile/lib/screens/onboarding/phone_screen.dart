@@ -48,7 +48,8 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger),
+          SnackBar(
+              content: Text('Error: $e'), backgroundColor: AppTheme.danger),
         );
       }
     }
@@ -73,7 +74,6 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                 child: VideoPlayer(_videoCtrl),
               ),
             ),
-
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -83,7 +83,6 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
               ),
             ),
           ),
-
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -98,24 +97,35 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                       children: AppStrings.all.entries.map((entry) {
                         final isSelected = entry.key == currentLang;
                         return GestureDetector(
-                          onTap: () => ref.read(localeProvider.notifier).setLanguage(entry.key),
+                          onTap: () => ref
+                              .read(localeProvider.notifier)
+                              .setLanguage(entry.key),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             margin: const EdgeInsets.only(left: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
-                              color: isSelected ? Colors.white : Colors.white.withOpacity(0.15),
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.white.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: isSelected ? Colors.white : Colors.white.withOpacity(0.3),
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.white.withOpacity(0.3),
                               ),
                             ),
                             child: Text(
                               entry.value.languageName,
                               style: TextStyle(
                                 fontSize: 12,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                                color: isSelected ? AppTheme.primary : Colors.white,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w400,
+                                color: isSelected
+                                    ? AppTheme.primary
+                                    : Colors.white,
                               ),
                             ),
                           ),
@@ -130,19 +140,28 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withOpacity(0.3)),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.3)),
                       ),
-                      child: const Icon(Icons.shield_rounded, color: Colors.white, size: 36),
+                      child: const Icon(Icons.shield_rounded,
+                          color: Colors.white, size: 36),
                     ),
                     const SizedBox(height: 32),
                     Text(
                       s.welcome,
-                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, height: 1.2, color: Colors.white),
+                      style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2,
+                          color: Colors.white),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       s.welcomeSub,
-                      style: TextStyle(fontSize: 16, color: Colors.white.withOpacity(0.8), height: 1.5),
+                      style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.8),
+                          height: 1.5),
                     ),
                     const SizedBox(height: 40),
 
@@ -151,7 +170,8 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        border:
+                            Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
                       child: Column(
                         children: [
@@ -165,39 +185,50 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                             child: TextFormField(
                               controller: _phoneCtrl,
                               keyboardType: TextInputType.phone,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600),
                               inputFormatters: [
                                 FilteringTextInputFormatter.digitsOnly,
                                 LengthLimitingTextInputFormatter(10),
                               ],
                               decoration: InputDecoration(
                                 prefixText: '+91  ',
-                                prefixStyle: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+                                prefixStyle: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white),
                                 hintText: '9876543210',
-                                hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
+                                hintStyle: TextStyle(
+                                    color: Colors.white.withOpacity(0.4)),
                                 labelText: s.mobileNumber,
-                                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                labelStyle: TextStyle(
+                                    color: Colors.white.withOpacity(0.7)),
                                 filled: true,
                                 fillColor: Colors.white.withOpacity(0.08),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                                  borderSide: BorderSide(
+                                      color: Colors.white.withOpacity(0.3)),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  borderSide: const BorderSide(color: Colors.white),
+                                  borderSide:
+                                      const BorderSide(color: Colors.white),
                                 ),
                                 errorBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(color: AppTheme.danger),
+                                  borderSide:
+                                      BorderSide(color: AppTheme.danger),
                                 ),
                                 focusedErrorBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(10),
-                                  borderSide: BorderSide(color: AppTheme.danger),
+                                  borderSide:
+                                      BorderSide(color: AppTheme.danger),
                                 ),
                               ),
                               validator: (v) {
-                                if (v == null || v.length != 10) return s.invalidPhone;
+                                if (v == null || v.length != 10)
+                                  return s.invalidPhone;
                                 return null;
                               },
                             ),
@@ -213,9 +244,16 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                                 ? Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+                                      const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                              strokeWidth: 2)),
                                       const SizedBox(width: 12),
-                                      Text(s.sendingOtp, style: const TextStyle(color: Colors.white)),
+                                      Text(s.sendingOtp,
+                                          style: const TextStyle(
+                                              color: Colors.white)),
                                     ],
                                   )
                                 : Text(s.sendOtp),
@@ -230,21 +268,35 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.4),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFFFE082).withOpacity(0.5)),
+                        border: Border.all(
+                            color: const Color(0xFFFFE082).withOpacity(0.5)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFF59E0B)),
+                              const Icon(Icons.info_outline_rounded,
+                                  size: 16, color: Color(0xFFF59E0B)),
                               const SizedBox(width: 6),
-                              Text(s.howItWorks, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFFFFE082))),
+                              Text(s.howItWorks,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                      color: Color(0xFFFFE082))),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Text(s.howItWorksReal, style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.5)),
-                          Text(s.howItWorksDemo, style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.5)),
+                          Text(s.howItWorksReal,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white70,
+                                  height: 1.5)),
+                          Text(s.howItWorksDemo,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white70,
+                                  height: 1.5)),
                         ],
                       ),
                     ),
@@ -256,7 +308,8 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                           child: Text(
                             s.serverWakeup,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 12, color: Colors.white54),
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.white54),
                           ),
                         ),
                       ),
@@ -264,7 +317,8 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
                     Center(
                       child: Text(
                         s.termsPrivacy,
-                        style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.4)),
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.white.withOpacity(0.4)),
                         textAlign: TextAlign.center,
                       ),
                     ),

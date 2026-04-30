@@ -22,7 +22,8 @@ class LiveRiskScreen extends ConsumerWidget {
           children: [
             const Icon(Icons.bolt_rounded, color: AppTheme.warning, size: 22),
             const SizedBox(width: 6),
-            Text(s.liveRisk, style: const TextStyle(fontWeight: FontWeight.w800)),
+            Text(s.liveRisk,
+                style: const TextStyle(fontWeight: FontWeight.w800)),
           ],
         ),
         backgroundColor: Colors.white,
@@ -54,7 +55,8 @@ List<Map<String, dynamic>> _deduped(List<dynamic> disruptions) {
     final m = d as Map<String, dynamic>;
     final type = m['disruption_type'] as String? ?? '';
     final dss = (m['dss_multiplier'] as num?)?.toDouble() ?? 0.0;
-    final existing = (seen[type]?['dss_multiplier'] as num?)?.toDouble() ?? -1.0;
+    final existing =
+        (seen[type]?['dss_multiplier'] as num?)?.toDouble() ?? -1.0;
     if (dss > existing) seen[type] = m;
   }
   return seen.values.toList();
@@ -97,15 +99,19 @@ class _RiskBody extends ConsumerWidget {
             const SizedBox(height: 16),
 
             _RiskGauge(
-                probability: overallProbability, city: city, platform: platform),
+                probability: overallProbability,
+                city: city,
+                platform: platform),
             const SizedBox(height: 20),
 
-            _RiskFactorCard(riskScore: riskScore, disruptions: uniqueDisruptions),
+            _RiskFactorCard(
+                riskScore: riskScore, disruptions: uniqueDisruptions),
             const SizedBox(height: 20),
 
             if (uniqueDisruptions.isNotEmpty) ...[
               Text(s.activeRiskFactors,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w700)),
               const SizedBox(height: 10),
               ...uniqueDisruptions
                   .map((d) => _DisruptionRiskTile(disruption: d)),
@@ -138,9 +144,13 @@ class _LiveWeatherCard extends ConsumerWidget {
         ),
         child: Row(
           children: [
-            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+            const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2)),
             const SizedBox(width: 12),
-            Text(s.fetchingLiveWeather, style: const TextStyle(color: AppTheme.textSecondary)),
+            Text(s.fetchingLiveWeather,
+                style: const TextStyle(color: AppTheme.textSecondary)),
           ],
         ),
       ),
@@ -189,7 +199,8 @@ class _LiveWeatherCard extends ConsumerWidget {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.location_on_rounded, color: Colors.white70, size: 14),
+                  const Icon(Icons.location_on_rounded,
+                      color: Colors.white70, size: 14),
                   const SizedBox(width: 4),
                   Text(
                     cityName.isNotEmpty ? cityName : s.city,
@@ -197,7 +208,8 @@ class _LiveWeatherCard extends ConsumerWidget {
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
@@ -218,7 +230,10 @@ class _LiveWeatherCard extends ConsumerWidget {
                   Text(
                     temp != null ? '${temp.toInt()}°C' : '--',
                     style: const TextStyle(
-                        fontSize: 48, fontWeight: FontWeight.w900, color: Colors.white, height: 1),
+                        fontSize: 48,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        height: 1),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -227,10 +242,13 @@ class _LiveWeatherCard extends ConsumerWidget {
                       children: [
                         Text(desc,
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600)),
                         if (feelsLike != null)
                           Text('Feels like ${feelsLike.toInt()}°C',
-                              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                              style: const TextStyle(
+                                  color: Colors.white70, fontSize: 12)),
                       ],
                     ),
                   ),
@@ -240,18 +258,31 @@ class _LiveWeatherCard extends ConsumerWidget {
               // Stats row
               Row(
                 children: [
-                  _WeatherStat(icon: Icons.water_drop_rounded, label: s.humidity, value: humidity != null ? '$humidity%' : '--'),
-                  _WeatherStat(icon: Icons.air_rounded, label: s.wind, value: wind != null ? '${wind.toInt()} km/h' : '--'),
+                  _WeatherStat(
+                      icon: Icons.water_drop_rounded,
+                      label: s.humidity,
+                      value: humidity != null ? '$humidity%' : '--'),
+                  _WeatherStat(
+                      icon: Icons.air_rounded,
+                      label: s.wind,
+                      value: wind != null ? '${wind.toInt()} km/h' : '--'),
                   if (rainfall > 0)
-                    _WeatherStat(icon: Icons.umbrella_rounded, label: s.rain, value: '${rainfall.toStringAsFixed(1)} mm/h'),
+                    _WeatherStat(
+                        icon: Icons.umbrella_rounded,
+                        label: s.rain,
+                        value: '${rainfall.toStringAsFixed(1)} mm/h'),
                   if (visibility != null)
-                    _WeatherStat(icon: Icons.visibility_rounded, label: s.visibility, value: '${visibility} km'),
+                    _WeatherStat(
+                        icon: Icons.visibility_rounded,
+                        label: s.visibility,
+                        value: '${visibility} km'),
                 ],
               ),
               const SizedBox(height: 12),
               // AQI row
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(10),
@@ -262,22 +293,28 @@ class _LiveWeatherCard extends ConsumerWidget {
                     const SizedBox(width: 8),
                     Text('AQI ${aqi ?? '--'}',
                         style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14)),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: aqiColor.withOpacity(0.25),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(aqiLabel,
                           style: TextStyle(
-                              color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700)),
                     ),
                     if (pm25 != null) ...[
                       const Spacer(),
                       Text('PM2.5: ${pm25.toStringAsFixed(1)} µg/m³',
-                          style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 11)),
                     ],
                   ],
                 ),
@@ -294,7 +331,8 @@ class _WeatherStat extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  const _WeatherStat({required this.icon, required this.label, required this.value});
+  const _WeatherStat(
+      {required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -304,8 +342,12 @@ class _WeatherStat extends StatelessWidget {
           Icon(icon, color: Colors.white70, size: 18),
           const SizedBox(height: 2),
           Text(value,
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
-          Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10)),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700)),
+          Text(label,
+              style: const TextStyle(color: Colors.white60, fontSize: 10)),
         ],
       ),
     );
@@ -374,7 +416,9 @@ class _RiskGaugeState extends State<_RiskGauge>
             border: Border.all(color: color.withOpacity(0.3)),
             boxShadow: [
               BoxShadow(
-                  color: color.withOpacity(0.12), blurRadius: 16, spreadRadius: 2)
+                  color: color.withOpacity(0.12),
+                  blurRadius: 16,
+                  spreadRadius: 2)
             ],
           ),
           child: Column(
@@ -443,7 +487,9 @@ class _GaugePainter extends CustomPainter {
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      startAngle, sweepTotal, false,
+      startAngle,
+      sweepTotal,
+      false,
       Paint()
         ..color = AppTheme.divider
         ..strokeWidth = 14
@@ -453,7 +499,9 @@ class _GaugePainter extends CustomPainter {
     if (value > 0) {
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
-        startAngle, sweepTotal * value, false,
+        startAngle,
+        sweepTotal * value,
+        false,
         Paint()
           ..color = color
           ..strokeWidth = 14
@@ -472,8 +520,7 @@ class _GaugePainter extends CustomPainter {
 class _RiskFactorCard extends ConsumerWidget {
   final double riskScore;
   final List<Map<String, dynamic>> disruptions;
-  const _RiskFactorCard(
-      {required this.riskScore, required this.disruptions});
+  const _RiskFactorCard({required this.riskScore, required this.disruptions});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -489,7 +536,8 @@ class _RiskFactorCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(s.riskFactorBreakdown,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
           const SizedBox(height: 16),
           _FactorRow(
             label: s.personalRiskScore,
@@ -694,20 +742,23 @@ class _RiskAdviceCard extends ConsumerWidget {
     final s = ref.watch(stringsProvider);
     final isHigh = probability >= 0.65;
     final isMid = probability >= 0.35;
-    final color =
-        isHigh ? AppTheme.danger : isMid ? AppTheme.warning : AppTheme.success;
+    final color = isHigh
+        ? AppTheme.danger
+        : isMid
+            ? AppTheme.warning
+            : AppTheme.success;
     final icon = isHigh
         ? Icons.crisis_alert_rounded
         : isMid
             ? Icons.info_rounded
             : Icons.check_circle_rounded;
-    
+
     final title = isHigh
         ? '${s.highRisk} — Consider Filing a Claim'
         : isMid
             ? '${s.moderateRisk} — Stay Alert'
             : '${s.lowRisk} — You\'re Good!';
-    
+
     final body = isHigh
         ? 'Active disruptions are significantly impacting your delivery zone. If you have an active policy, your claim may be auto-triggered.'
         : isMid
@@ -760,7 +811,8 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.cloud_off_rounded, size: 48, color: AppTheme.textHint),
+          const Icon(Icons.cloud_off_rounded,
+              size: 48, color: AppTheme.textHint),
           const SizedBox(height: 12),
           const Text('Could not load risk data',
               style: TextStyle(color: AppTheme.textSecondary)),

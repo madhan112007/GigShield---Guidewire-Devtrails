@@ -240,7 +240,8 @@ class AppStrings {
 const _en = AppStrings(
   languageName: 'English',
   welcome: 'Welcome to\nSusanoo',
-  welcomeSub: '"The Ultimate Defense" for delivery heroes.\nEnter your mobile number to get started.',
+  welcomeSub:
+      '"The Ultimate Defense" for delivery heroes.\nEnter your mobile number to get started.',
   mobileNumber: 'Mobile Number',
   sendOtp: 'Send OTP',
   sendingOtp: 'Sending OTP...',
@@ -249,8 +250,10 @@ const _en = AppStrings(
   verifying: 'Verifying...',
   termsPrivacy: 'By continuing, you agree to our Terms & Privacy Policy',
   howItWorks: 'How it works',
-  howItWorksReal: '• Real users: Enter your registered mobile number to receive a live OTP via phone call.',
-  howItWorksDemo: '• Demo / Testing: Use any number and enter OTP 123456 to explore the app in demo mode.',
+  howItWorksReal:
+      '• Real users: Enter your registered mobile number to receive a live OTP via phone call.',
+  howItWorksDemo:
+      '• Demo / Testing: Use any number and enter OTP 123456 to explore the app in demo mode.',
   serverWakeup: 'Please wait up to 30 seconds\nfor the server to wake up.',
   invalidPhone: 'Enter a valid 10-digit number',
   home: 'Home',
@@ -270,7 +273,8 @@ const _en = AppStrings(
   myPolicy: 'My Policy',
   noPolicyActive: 'No active policy',
   noActivePolicy: 'No Active Policy',
-  protectionDesc: 'Get protected from income loss due to rain, heat, pollution & more.',
+  protectionDesc:
+      'Get protected from income loss due to rain, heat, pollution & more.',
   buyWeeklyPolicy: 'Buy Weekly Policy',
   coverageDetails: 'Coverage Details',
   maxDailyPayout: 'Max Daily Payout',
@@ -286,7 +290,8 @@ const _en = AppStrings(
   hello: 'Hello',
   claimsHistory: 'Claims History',
   noClaimsYet: 'No claims yet',
-  claimsAutoTriggeredDesc: 'Claims are auto-triggered when a\ndisruption event is detected in your area.',
+  claimsAutoTriggeredDesc:
+      'Claims are auto-triggered when a\ndisruption event is detected in your area.',
   claim: 'Claim',
   aiAuto: 'AI Auto',
   dss: 'DSS',
@@ -324,9 +329,11 @@ const _en = AppStrings(
   language: 'Language',
   selectLanguage: 'Select Language',
   allowLocation: 'Allow Location Access',
-  allowLocationDesc: 'Susanoo uses your location to detect disruptions in your delivery zone and auto-trigger claims when weather or civic events affect your area.',
+  allowLocationDesc:
+      'Susanoo uses your location to detect disruptions in your delivery zone and auto-trigger claims when weather or civic events affect your area.',
   locationNeeded: 'Location Access Needed',
-  locationNeededDesc: 'Please enable location in Settings to allow Susanoo to detect disruptions in your delivery zone.',
+  locationNeededDesc:
+      'Please enable location in Settings to allow Susanoo to detect disruptions in your delivery zone.',
   openSettings: 'Open Settings',
   notNow: 'Not Now',
   allowLocationBtn: 'Allow Location',
@@ -341,29 +348,36 @@ const _en = AppStrings(
   termsAndConditions: 'Terms & Conditions',
   pleaseReadTerms: 'Please read and accept all terms before continuing.',
   scrollToRead: 'Scroll down to read all terms',
-  acceptTermsOfService: 'I have read and agree to the Terms of Service & Insurance Policy Terms',
+  acceptTermsOfService:
+      'I have read and agree to the Terms of Service & Insurance Policy Terms',
   acceptPrivacyPolicy: 'I have read and agree to the Privacy Policy',
-  acceptDataConsent: 'I consent to location access and data processing as described above.',
+  acceptDataConsent:
+      'I consent to location access and data processing as described above.',
   acceptAndContinue: 'Accept & Continue',
   acceptAllToContinue: 'Accept All Terms to Continue',
-  confirmAge: 'By continuing, you confirm you are 18+ and an active gig worker.',
+  confirmAge:
+      'By continuing, you confirm you are 18+ and an active gig worker.',
   lastUpdated: 'Last updated: April 2025 • Version 1.0',
 );
 
 const _ta = AppStrings(
   languageName: 'தமிழ்',
   welcome: 'சுசானூவிற்கு\nவரவேற்கிறோம்',
-  welcomeSub: 'டெலிவரி ஹீரோக்களுக்கான "இறுதி பாதுகாப்பு".\nதொடங்க உங்கள் மொபைல் எண்ணை உள்ளிடவும்.',
+  welcomeSub:
+      'டெலிவரி ஹீரோக்களுக்கான "இறுதி பாதுகாப்பு".\nதொடங்க உங்கள் மொபைல் எண்ணை உள்ளிடவும்.',
   mobileNumber: 'மொபைல் எண்',
   sendOtp: 'OTP அனுப்பு',
   sendingOtp: 'OTP அனுப்புகிறது...',
   enterOtp: 'OTP உள்ளிடவும்',
   verify: 'சரிபார்',
   verifying: 'சரிபார்க்கிறது...',
-  termsPrivacy: 'தொடர்வதன் மூலம், எங்கள் விதிமுறைகள் & தனியுரிமைக் கொள்கையை ஒப்புக்கொள்கிறீர்கள்',
+  termsPrivacy:
+      'தொடர்வதன் மூலம், எங்கள் விதிமுறைகள் & தனியுரிமைக் கொள்கையை ஒப்புக்கொள்கிறீர்கள்',
   howItWorks: 'எப்படி செயல்படுகிறது',
-  howItWorksReal: '• உண்மையான பயனர்கள்: OTP தொலைபேசி அழைப்பு மூலம் பெற உங்கள் பதிவு செய்யப்பட்ட மொபைல் எண்ணை உள்ளிடவும்.',
-  howItWorksDemo: '• டெமோ / சோதனை: எந்த எண்ணையும் பயன்படுத்தி OTP 123456 உள்ளிட்டு டெமோ பயன்முறையை ஆராயவும்.',
+  howItWorksReal:
+      '• உண்மையான பயனர்கள்: OTP தொலைபேசி அழைப்பு மூலம் பெற உங்கள் பதிவு செய்யப்பட்ட மொபைல் எண்ணை உள்ளிடவும்.',
+  howItWorksDemo:
+      '• டெமோ / சோதனை: எந்த எண்ணையும் பயன்படுத்தி OTP 123456 உள்ளிட்டு டெமோ பயன்முறையை ஆராயவும்.',
   serverWakeup: 'சர்வர் விழிப்படைய\n30 வினாடிகள் வரை காத்திருக்கவும்.',
   invalidPhone: 'சரியான 10 இலக்க எண்ணை உள்ளிடவும்',
   home: 'முகப்பு',
@@ -383,7 +397,8 @@ const _ta = AppStrings(
   myPolicy: 'என் பாலிசி',
   noPolicyActive: 'செயலில் உள்ள பாலிசி இல்லை',
   noActivePolicy: 'செயலில் உள்ள பாலிசி இல்லை',
-  protectionDesc: 'மழை, வெப்பம், மாசு மற்றும் பலவற்றால் வருமான இழப்பிலிருந்து பாதுகாப்பு பெறுங்கள்.',
+  protectionDesc:
+      'மழை, வெப்பம், மாசு மற்றும் பலவற்றால் வருமான இழப்பிலிருந்து பாதுகாப்பு பெறுங்கள்.',
   buyWeeklyPolicy: 'வாராந்திர பாலிசி வாங்கு',
   coverageDetails: 'கவரேஜ் விவரங்கள்',
   maxDailyPayout: 'அதிகபட்ச தினசரி பணம்',
@@ -399,7 +414,8 @@ const _ta = AppStrings(
   hello: 'வணக்கம்',
   claimsHistory: 'கோரிக்கை வரலாறு',
   noClaimsYet: 'இன்னும் கோரிக்கைகள் இல்லை',
-  claimsAutoTriggeredDesc: 'உங்கள் பகுதியில் இடையூறு கண்டறியப்படும்போது\nகோரிக்கைகள் தானாக தொடங்கப்படும்.',
+  claimsAutoTriggeredDesc:
+      'உங்கள் பகுதியில் இடையூறு கண்டறியப்படும்போது\nகோரிக்கைகள் தானாக தொடங்கப்படும்.',
   claim: 'கோரிக்கை',
   aiAuto: 'AI தானியங்கி',
   dss: 'DSS',
@@ -437,9 +453,11 @@ const _ta = AppStrings(
   language: 'மொழி',
   selectLanguage: 'மொழியை தேர்ந்தெடுக்கவும்',
   allowLocation: 'இருப்பிட அணுகலை அனுமதிக்கவும்',
-  allowLocationDesc: 'உங்கள் டெலிவரி மண்டலத்தில் இடையூறுகளை கண்டறிய சுசானூ உங்கள் இருப்பிடத்தை பயன்படுத்துகிறது.',
+  allowLocationDesc:
+      'உங்கள் டெலிவரி மண்டலத்தில் இடையூறுகளை கண்டறிய சுசானூ உங்கள் இருப்பிடத்தை பயன்படுத்துகிறது.',
   locationNeeded: 'இருப்பிட அணுகல் தேவை',
-  locationNeededDesc: 'சுசானூ உங்கள் டெலிவரி மண்டலத்தில் இடையூறுகளை கண்டறிய அமைப்புகளில் இருப்பிடத்தை இயக்கவும்.',
+  locationNeededDesc:
+      'சுசானூ உங்கள் டெலிவரி மண்டலத்தில் இடையூறுகளை கண்டறிய அமைப்புகளில் இருப்பிடத்தை இயக்கவும்.',
   openSettings: 'அமைப்புகளை திற',
   notNow: 'இப்போது வேண்டாம்',
   allowLocationBtn: 'இருப்பிடத்தை அனுமதி',
@@ -452,21 +470,26 @@ const _ta = AppStrings(
   register: 'பதிவை முடிக்கவும்',
   registering: 'பதிவு செய்கிறது...',
   termsAndConditions: 'விதிமுறைகள் & நிபந்தனைகள்',
-  pleaseReadTerms: 'தொடர்வதற்கு முன் அனைத்து விதிமுறைகளையும் படித்து ஒப்புக்கொள்ளவும்.',
+  pleaseReadTerms:
+      'தொடர்வதற்கு முன் அனைத்து விதிமுறைகளையும் படித்து ஒப்புக்கொள்ளவும்.',
   scrollToRead: 'அனைத்து விதிமுறைகளையும் படிக்க கீழே உருட்டவும்',
-  acceptTermsOfService: 'சேவை விதிமுறைகள் & காப்பீட்டு கொள்கை விதிமுறைகளை படித்து ஒப்புக்கொள்கிறேன்',
+  acceptTermsOfService:
+      'சேவை விதிமுறைகள் & காப்பீட்டு கொள்கை விதிமுறைகளை படித்து ஒப்புக்கொள்கிறேன்',
   acceptPrivacyPolicy: 'தனியுரிமைக் கொள்கையை படித்து ஒப்புக்கொள்கிறேன்',
-  acceptDataConsent: 'மேலே விவரிக்கப்பட்டபடி இருப்பிட அணுகல் மற்றும் தரவு செயலாக்கத்திற்கு சம்மதிக்கிறேன்.',
+  acceptDataConsent:
+      'மேலே விவரிக்கப்பட்டபடி இருப்பிட அணுகல் மற்றும் தரவு செயலாக்கத்திற்கு சம்மதிக்கிறேன்.',
   acceptAndContinue: 'ஒப்புக்கொண்டு தொடரவும்',
   acceptAllToContinue: 'தொடர அனைத்து விதிமுறைகளையும் ஒப்புக்கொள்ளவும்',
-  confirmAge: 'தொடர்வதன் மூலம், நீங்கள் 18+ மற்றும் செயலில் உள்ள கிக் தொழிலாளி என்று உறுதிப்படுத்துகிறீர்கள்.',
+  confirmAge:
+      'தொடர்வதன் மூலம், நீங்கள் 18+ மற்றும் செயலில் உள்ள கிக் தொழிலாளி என்று உறுதிப்படுத்துகிறீர்கள்.',
   lastUpdated: 'கடைசியாக புதுப்பிக்கப்பட்டது: ஏப்ரல் 2025 • பதிப்பு 1.0',
 );
 
 const _hi = AppStrings(
   languageName: 'हिंदी',
   welcome: 'सुसानू में\nआपका स्वागत है',
-  welcomeSub: 'डिलीवरी हीरोज़ के लिए "अंतिम सुरक्षा".\nशुरू करने के लिए अपना मोबाइल नंबर दर्ज करें।',
+  welcomeSub:
+      'डिलीवरी हीरोज़ के लिए "अंतिम सुरक्षा".\nशुरू करने के लिए अपना मोबाइल नंबर दर्ज करें।',
   mobileNumber: 'मोबाइल नंबर',
   sendOtp: 'OTP भेजें',
   sendingOtp: 'OTP भेजा जा रहा है...',
@@ -475,8 +498,10 @@ const _hi = AppStrings(
   verifying: 'सत्यापित हो रहा है...',
   termsPrivacy: 'जारी रखकर, आप हमारी शर्तें और गोपनीयता नीति से सहमत हैं',
   howItWorks: 'यह कैसे काम करता है',
-  howItWorksReal: '• वास्तविक उपयोगकर्ता: फ़ोन कॉल के माध्यम से लाइव OTP प्राप्त करने के लिए अपना पंजीकृत मोबाइल नंबर दर्ज करें।',
-  howItWorksDemo: '• डेमो / परीक्षण: कोई भी नंबर उपयोग करें और डेमो मोड में ऐप देखने के लिए OTP 123456 दर्ज करें।',
+  howItWorksReal:
+      '• वास्तविक उपयोगकर्ता: फ़ोन कॉल के माध्यम से लाइव OTP प्राप्त करने के लिए अपना पंजीकृत मोबाइल नंबर दर्ज करें।',
+  howItWorksDemo:
+      '• डेमो / परीक्षण: कोई भी नंबर उपयोग करें और डेमो मोड में ऐप देखने के लिए OTP 123456 दर्ज करें।',
   serverWakeup: 'सर्वर के जागने के लिए\n30 सेकंड तक प्रतीक्षा करें।',
   invalidPhone: 'वैध 10 अंकों का नंबर दर्ज करें',
   home: 'होम',
@@ -512,7 +537,8 @@ const _hi = AppStrings(
   hello: 'नमस्ते',
   claimsHistory: 'दावों का इतिहास',
   noClaimsYet: 'अभी तक कोई दावा नहीं',
-  claimsAutoTriggeredDesc: 'आपके क्षेत्र में व्यवधान का पता चलने पर\nदावे स्वचालित रूप से शुरू होते हैं।',
+  claimsAutoTriggeredDesc:
+      'आपके क्षेत्र में व्यवधान का पता चलने पर\nदावे स्वचालित रूप से शुरू होते हैं।',
   claim: 'दावा',
   aiAuto: 'AI स्वतः',
   dss: 'DSS',
@@ -550,9 +576,11 @@ const _hi = AppStrings(
   language: 'भाषा',
   selectLanguage: 'भाषा चुनें',
   allowLocation: 'स्थान पहुँच की अनुमति दें',
-  allowLocationDesc: 'सुसानू आपके डिलीवरी क्षेत्र में व्यवधानों का पता लगाने के लिए आपके स्थान का उपयोग करता है।',
+  allowLocationDesc:
+      'सुसानू आपके डिलीवरी क्षेत्र में व्यवधानों का पता लगाने के लिए आपके स्थान का उपयोग करता है।',
   locationNeeded: 'स्थान पहुँच आवश्यक है',
-  locationNeededDesc: 'सुसानू को आपके डिलीवरी क्षेत्र में व्यवधानों का पता लगाने के लिए सेटिंग्स में स्थान सक्षम करें।',
+  locationNeededDesc:
+      'सुसानू को आपके डिलीवरी क्षेत्र में व्यवधानों का पता लगाने के लिए सेटिंग्स में स्थान सक्षम करें।',
   openSettings: 'सेटिंग्स खोलें',
   notNow: 'अभी नहीं',
   allowLocationBtn: 'स्थान की अनुमति दें',
@@ -567,11 +595,14 @@ const _hi = AppStrings(
   termsAndConditions: 'नियम और शर्तें',
   pleaseReadTerms: 'जारी रखने से पहले सभी शर्तों को पढ़ें और स्वीकार करें.',
   scrollToRead: 'सभी शर्तें पढ़ने के लिए नीचे स्क्रोल करें',
-  acceptTermsOfService: 'मैंने सेवा शर्तें और बीमा पॉलिसी शर्तें पढ़ी हैं और सहमत हूं',
+  acceptTermsOfService:
+      'मैंने सेवा शर्तें और बीमा पॉलिसी शर्तें पढ़ी हैं और सहमत हूं',
   acceptPrivacyPolicy: 'मैंने गोपनीयता नीति पढ़ी है और सहमत हूं',
-  acceptDataConsent: 'मैं उपरोक्त विवरण अनुसार स्थान पहुंच और डेटा प्रसंस्करण के लिए सहमति देता हूं.',
+  acceptDataConsent:
+      'मैं उपरोक्त विवरण अनुसार स्थान पहुंच और डेटा प्रसंस्करण के लिए सहमति देता हूं.',
   acceptAndContinue: 'स्वीकार करें और जारी रखें',
   acceptAllToContinue: 'जारी रखने के लिए सभी शर्तें स्वीकार करें',
-  confirmAge: 'जारी रखकर, आप पुष्टि करते हैं कि आप 18+ हैं और एक सक्रिय गिग वर्कर हैं.',
+  confirmAge:
+      'जारी रखकर, आप पुष्टि करते हैं कि आप 18+ हैं और एक सक्रिय गिग वर्कर हैं.',
   lastUpdated: 'अंतिम अपडेट: अप्रैल 2025 • संस्करण 1.0',
 );

@@ -13,6 +13,10 @@ import {
 import { AnimatedCounter } from './components/AnimatedCounter'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+const ADMIN_API_KEY = import.meta.env.VITE_ADMIN_API_KEY || ''
+const adminFetch = (path) => fetch(`${API}${path}`, {
+  headers: ADMIN_API_KEY ? { 'X-Admin-API-Key': ADMIN_API_KEY } : {},
+})
 
 // ════════════════════════════════════════════════════════════════════════════════
 // STYLES - Glassmorphism + 3D + Animations
@@ -1546,17 +1550,17 @@ export default function App() {
   const [selectedClaim, setSelectedClaim] = useState(null)
 
   useEffect(() => {
-    fetch(`${API}/admin/stats`).then(r => r.json()).then(setStats).catch(() => setStats(MOCK_STATS))
-    fetch(`${API}/admin/analytics`).then(r => r.json()).then(setAnalytics).catch(() => setAnalytics({}))
+    adminFetch('/admin/stats').then(r => r.json()).then(setStats).catch(() => setStats(MOCK_STATS))
+    adminFetch('/admin/analytics').then(r => r.json()).then(setAnalytics).catch(() => setAnalytics({}))
   }, [])
 
   useEffect(() => {
     if (active === 'claims' && !claims)
-      fetch(`${API}/admin/claims`).then(r => r.json()).then(setClaims).catch(() => setClaims(MOCK_CLAIMS))
+      adminFetch('/admin/claims').then(r => r.json()).then(setClaims).catch(() => setClaims(MOCK_CLAIMS))
     if (active === 'disruptions' && !disruptions)
-      fetch(`${API}/admin/disruptions`).then(r => r.json()).then(setDisruptions).catch(() => setDisruptions(MOCK_DISRUPTIONS))
+      adminFetch('/admin/disruptions').then(r => r.json()).then(setDisruptions).catch(() => setDisruptions(MOCK_DISRUPTIONS))
     if (active === 'workers' && !workers)
-      fetch(`${API}/admin/workers`).then(r => r.json()).then(setWorkers).catch(() => setWorkers(MOCK_WORKERS))
+      adminFetch('/admin/workers').then(r => r.json()).then(setWorkers).catch(() => setWorkers(MOCK_WORKERS))
   }, [active])
 
   const renderContent = () => {

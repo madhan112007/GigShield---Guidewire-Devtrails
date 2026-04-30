@@ -22,7 +22,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+    _controller = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200));
     _scaleAnim = CurvedAnimation(parent: _controller, curve: Curves.elasticOut)
         .drive(Tween(begin: 0.5, end: 1.0));
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn)
@@ -71,7 +72,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       color: Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(28),
                     ),
-                    child: const Icon(Icons.shield_rounded, color: Colors.white, size: 56),
+                    child: const Icon(Icons.shield_rounded,
+                        color: Colors.white, size: 56),
                   ),
                   const SizedBox(height: 24),
                   const Text(

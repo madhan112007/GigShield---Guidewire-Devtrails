@@ -15,6 +15,7 @@ class AuthState {
   final bool isNewUser;
   final String? workerId;
   final String? selectedPlatform;
+  final bool isDevMode;
   final bool isLoading;
   final String? error;
   const AuthState({
@@ -22,15 +23,24 @@ class AuthState {
     this.isNewUser = false,
     this.workerId,
     this.selectedPlatform,
+    this.isDevMode = false,
     this.isLoading = false,
     this.error,
   });
-  AuthState copyWith({bool? isLoggedIn, bool? isNewUser, String? workerId, String? selectedPlatform, bool? isLoading, String? error}) =>
+  AuthState copyWith(
+          {bool? isLoggedIn,
+          bool? isNewUser,
+          String? workerId,
+          String? selectedPlatform,
+          bool? isDevMode,
+          bool? isLoading,
+          String? error}) =>
       AuthState(
         isLoggedIn: isLoggedIn ?? this.isLoggedIn,
         isNewUser: isNewUser ?? this.isNewUser,
         workerId: workerId ?? this.workerId,
         selectedPlatform: selectedPlatform ?? this.selectedPlatform,
+        isDevMode: isDevMode ?? this.isDevMode,
         isLoading: isLoading ?? this.isLoading,
         error: error,
       );
@@ -51,7 +61,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> _checkAuth() async {
     final loggedIn = await _api.isLoggedIn();
-    state = state.copyWith(isLoggedIn: loggedIn);
+    final isDevMode = await _api.isDevMode();
+    state = state.copyWith(isLoggedIn: loggedIn, isDevMode: isDevMode);
     if (loggedIn) {
       LocationService.startTracking(_api);
       await _registerFcmToken();
@@ -59,6 +70,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> forceLogout() async {
+    LocationService.stopTracking();
     await _api.logout();
     state = const AuthState();
   }
@@ -83,18 +95,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
         res['access_token'],
         res['refresh_token'],
         res['worker_id'],
+        isDevMode: res['is_dev_mode'] == true,
       );
       final isNew = res['is_new_user'] ?? false;
       state = state.copyWith(
         isLoggedIn: !isNew,
         isNewUser: isNew,
         workerId: res['worker_id'],
+        isDevMode: res['is_dev_mode'] == true,
         isLoading: false,
       );
       if (!isNew) await _registerFcmToken();
       return isNew;
     } catch (e) {
-      state = state.copyWith(isLoading: false, error: 'Invalid OTP. Try again.');
+      state =
+          state.copyWith(isLoading: false, error: 'Invalid OTP. Try again.');
       return false;
     }
   }
@@ -110,6 +125,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    LocationService.stopTracking();
     await _api.logout();
     state = const AuthState(isNewUser: false);
   }
@@ -121,7 +137,8 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>(
 
 // ── Worker/Dashboard state ─────────────────────────────────────────────────────
 
-final dashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+final dashboardProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final api = ref.watch(apiServiceProvider);
   try {
     return await api.getDashboard();
@@ -133,7 +150,8 @@ final dashboardProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref)
   }
 });
 
-final activePolicyProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
+final activePolicyProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
   final api = ref.watch(apiServiceProvider);
   try {
     return await api.getActivePolicy();
@@ -142,7 +160,8 @@ final activePolicyProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
   }
 });
 
-final activeDisruptionsProvider = FutureProvider.autoDispose.family<List<dynamic>, String>(
+final activeDisruptionsProvider =
+    FutureProvider.autoDispose.family<List<dynamic>, String>(
   (ref, city) async {
     final api = ref.watch(apiServiceProvider);
     return api.getActiveDisruptions(city);
@@ -154,7 +173,8 @@ final claimsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   return api.listClaims();
 });
 
-final notificationsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+final notificationsProvider =
+    FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final api = ref.watch(apiServiceProvider);
   try {
     return await api.listNotifications();
@@ -170,15 +190,17 @@ final payoutsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
 
 // ── Premium Quote ─────────────────────────────────────────────────────────────
 
-final premiumQuoteProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>(
+final premiumQuoteProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, String>(
   (ref, tier) async {
     final api = ref.watch(apiServiceProvider);
     return api.getPremiumQuote(tier);
   },
 );
 
-// ── Dev mode (unlocked by using OTP 123456) ──────────────────────────────────
-final devModeProvider = StateProvider<bool>((ref) => false);
+// Dev mode is issued by the backend when OTP 123456 is accepted in non-production.
+final devModeProvider =
+    Provider<bool>((ref) => ref.watch(authProvider).isDevMode);
 
 // ── Selected tier for policy purchase ─────────────────────────────────────────
 
@@ -186,7 +208,8 @@ final selectedTierProvider = StateProvider<String>((ref) => 'smart');
 
 // ── Live Risk Assessment ───────────────────────────────────────────────────────
 
-final liveRiskProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+final liveRiskProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final api = ref.watch(apiServiceProvider);
   try {
     return await api.getRiskAssessment();
@@ -200,7 +223,8 @@ final liveRiskProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) 
 
 // ── Live Weather by GPS ────────────────────────────────────────────────────────
 
-final liveWeatherProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+final liveWeatherProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final api = ref.watch(apiServiceProvider);
 
   double? lat, lon;
@@ -223,5 +247,5 @@ final liveWeatherProvider = FutureProvider.autoDispose<Map<String, dynamic>>((re
     lon = pos.longitude;
   }
 
-  return api.getWeatherByLocation(lat!, lon!);
+  return api.getWeatherByLocation(lat, lon);
 });

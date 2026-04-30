@@ -8,7 +8,7 @@
 
 [[redirects]]
   from   = "/api/v1/*"
-  to     = "http://16.112.121.102:8000/api/v1/:splat"
+  to     = "https://api.example.com/api/v1/:splat"
   status = 200
   force  = true
 

@@ -23,7 +23,7 @@ class _AuthListenable extends ChangeNotifier {
   }
   final Ref _ref;
   bool get isLoggedIn => _ref.read(authProvider).isLoggedIn;
-  bool get isNewUser  => _ref.read(authProvider).isNewUser;
+  bool get isNewUser => _ref.read(authProvider).isNewUser;
   bool get hasPlatform => _ref.read(authProvider).selectedPlatform != null;
 }
 
@@ -34,17 +34,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     refreshListenable: listenable,
     redirect: (context, state) {
-      final isLoggedIn  = listenable.isLoggedIn;
-      final isNewUser   = listenable.isNewUser;
+      final isLoggedIn = listenable.isLoggedIn;
+      final isNewUser = listenable.isNewUser;
       final hasPlatform = listenable.hasPlatform;
-      final loc         = state.matchedLocation;
-      final onSplash    = loc == '/splash';
-      final onAuth      = loc.startsWith('/auth');
-      final onPlatform  = loc == '/auth/platform';
-      final onRegister  = loc == '/auth/register';
+      final loc = state.matchedLocation;
+      final onSplash = loc == '/splash';
+      final onAuth = loc.startsWith('/auth');
+      final onPlatform = loc == '/auth/platform';
+      final onRegister = loc == '/auth/register';
 
-      if (onSplash)    return null;
-      if (isLoggedIn)  return onAuth ? '/home' : null;
+      if (onSplash) return null;
+      if (isLoggedIn) return onAuth ? '/home' : null;
       // New user flow: platform first, then register
       if (isNewUser) {
         if (!hasPlatform) return onPlatform ? null : '/auth/platform';
@@ -77,7 +77,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
           GoRoute(path: '/policy', builder: (_, __) => const PolicyScreen()),
-          GoRoute(path: '/policy/buy', builder: (_, __) => const BuyPolicyScreen()),
+          GoRoute(
+              path: '/policy/buy', builder: (_, __) => const BuyPolicyScreen()),
           GoRoute(path: '/claims', builder: (_, __) => const ClaimsScreen()),
           GoRoute(path: '/risk', builder: (_, __) => const LiveRiskScreen()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),

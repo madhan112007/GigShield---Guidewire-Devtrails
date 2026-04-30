@@ -8,22 +8,27 @@ import 'package:susanoo/theme/app_theme.dart';
 import 'package:susanoo/providers/app_providers.dart';
 import 'package:susanoo/utils/constants.dart';
 
-void _showNotifications(BuildContext context, WidgetRef ref, List<dynamic> notifs) {
+void _showNotifications(
+    BuildContext context, WidgetRef ref, List<dynamic> notifs) {
   showModalBottomSheet(
     context: context,
-    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
     builder: (_) => Column(
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
           child: Row(
             children: [
-              const Text('Notifications', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const Text('Notifications',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
               const Spacer(),
               if (notifs.any((n) => n['is_read'] == false))
                 TextButton(
                   onPressed: () async {
-                    await ref.read(apiServiceProvider).markAllNotificationsRead();
+                    await ref
+                        .read(apiServiceProvider)
+                        .markAllNotificationsRead();
                     ref.invalidate(notificationsProvider);
                     if (context.mounted) Navigator.pop(context);
                   },
@@ -35,7 +40,9 @@ void _showNotifications(BuildContext context, WidgetRef ref, List<dynamic> notif
         const Divider(height: 1),
         Expanded(
           child: notifs.isEmpty
-              ? const Center(child: Text('No notifications yet', style: TextStyle(color: Colors.grey)))
+              ? const Center(
+                  child: Text('No notifications yet',
+                      style: TextStyle(color: Colors.grey)))
               : ListView.separated(
                   itemCount: notifs.length,
                   separatorBuilder: (_, __) => const Divider(height: 1),
@@ -44,18 +51,29 @@ void _showNotifications(BuildContext context, WidgetRef ref, List<dynamic> notif
                     final isRead = n['is_read'] == true;
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: isRead ? Colors.grey.shade100 : AppTheme.primaryLight,
+                        backgroundColor: isRead
+                            ? Colors.grey.shade100
+                            : AppTheme.primaryLight,
                         child: Icon(
                           _notifIcon(n['notif_type'] as String? ?? ''),
                           color: isRead ? Colors.grey : AppTheme.primary,
                           size: 18,
                         ),
                       ),
-                      title: Text(n['title'] ?? '', style: TextStyle(fontWeight: isRead ? FontWeight.w400 : FontWeight.w700, fontSize: 14)),
-                      subtitle: Text(n['body'] ?? '', style: const TextStyle(fontSize: 12)),
-                      tileColor: isRead ? null : AppTheme.primaryLight.withOpacity(0.3),
+                      title: Text(n['title'] ?? '',
+                          style: TextStyle(
+                              fontWeight:
+                                  isRead ? FontWeight.w400 : FontWeight.w700,
+                              fontSize: 14)),
+                      subtitle: Text(n['body'] ?? '',
+                          style: const TextStyle(fontSize: 12)),
+                      tileColor: isRead
+                          ? null
+                          : AppTheme.primaryLight.withOpacity(0.3),
                       onTap: () async {
-                        await ref.read(apiServiceProvider).markNotificationRead(n['id'] as String);
+                        await ref
+                            .read(apiServiceProvider)
+                            .markNotificationRead(n['id'] as String);
                         ref.invalidate(notificationsProvider);
                       },
                     );
@@ -69,12 +87,18 @@ void _showNotifications(BuildContext context, WidgetRef ref, List<dynamic> notif
 
 IconData _notifIcon(String type) {
   switch (type) {
-    case 'claim_approved': return Icons.thumb_up_rounded;
-    case 'claim_paid': return Icons.payments_rounded;
-    case 'claim_rejected': return Icons.cancel_rounded;
-    case 'disruption_detected': return Icons.warning_rounded;
-    case 'policy_expiring': return Icons.timer_rounded;
-    default: return Icons.notifications_rounded;
+    case 'claim_approved':
+      return Icons.thumb_up_rounded;
+    case 'claim_paid':
+      return Icons.payments_rounded;
+    case 'claim_rejected':
+      return Icons.cancel_rounded;
+    case 'disruption_detected':
+      return Icons.warning_rounded;
+    case 'policy_expiring':
+      return Icons.timer_rounded;
+    default:
+      return Icons.notifications_rounded;
   }
 }
 
@@ -94,9 +118,11 @@ class HomeScreen extends ConsumerWidget {
           final s = ref.watch(stringsProvider);
           final worker = data['worker'] as Map<String, dynamic>? ?? {};
           final policy = data['active_policy'] as Map<String, dynamic>?;
-          final disruptions = data['active_disruptions'] as List<dynamic>? ?? [];
+          final disruptions =
+              data['active_disruptions'] as List<dynamic>? ?? [];
           final claims = data['recent_claims'] as List<dynamic>? ?? [];
-          final totalProtected = (data['total_earned_protection'] as num?)?.toDouble() ?? 0.0;
+          final totalProtected =
+              (data['total_earned_protection'] as num?)?.toDouble() ?? 0.0;
 
           return CustomScrollView(
             slivers: [
@@ -106,20 +132,23 @@ class HomeScreen extends ConsumerWidget {
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     // Shield status card
-                    _ShieldCard(policy: policy, onTap: () => context.go('/policy')),
+                    _ShieldCard(
+                        policy: policy, onTap: () => context.go('/policy')),
                     const SizedBox(height: 16),
 
                     // Stats row
                     Row(
                       children: [
-                        Expanded(child: _StatCard(
+                        Expanded(
+                            child: _StatCard(
                           label: s.policy,
                           value: '₹${totalProtected.toStringAsFixed(0)}',
                           icon: Icons.savings_rounded,
                           color: AppTheme.success,
                         )),
                         const SizedBox(width: 12),
-                        Expanded(child: _StatCard(
+                        Expanded(
+                            child: _StatCard(
                           label: s.claims,
                           value: '${claims.length}',
                           icon: Icons.receipt_long_rounded,
@@ -133,26 +162,42 @@ class HomeScreen extends ConsumerWidget {
                     if (disruptions.isNotEmpty) ...[
                       Row(
                         children: [
-                          const Icon(Icons.warning_rounded, color: AppTheme.warning, size: 20),
+                          const Icon(Icons.warning_rounded,
+                              color: AppTheme.warning, size: 20),
                           const SizedBox(width: 6),
-                          Text(s.activeDisruptions, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                          Text(s.activeDisruptions,
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700)),
                           const Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: AppTheme.success.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: Text(s.activeDisruptions, style: const TextStyle(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.w600)),
+                            child: Text(s.activeDisruptions,
+                                style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.success,
+                                    fontWeight: FontWeight.w600)),
                           ),
                         ],
                       ),
                       const SizedBox(height: 10),
-                      ...{ for (var d in disruptions) (d as Map<String, dynamic>)['disruption_type']: d }.values
+                      ...{
+                        for (var d in disruptions)
+                          (d as Map<String, dynamic>)['disruption_type']: d
+                      }
+                          .values
                           .toList()
                           .asMap()
                           .entries
-                          .map((e) => _DisruptionTile(data: e.value as Map<String, dynamic>, policyId: null, index: e.key)),
+                          .map((e) => _DisruptionTile(
+                                data: e.value,
+                                policyId: policy?['id'] as String?,
+                                index: e.key,
+                              )),
                       const SizedBox(height: 20),
                     ],
 
@@ -163,11 +208,14 @@ class HomeScreen extends ConsumerWidget {
                     ],
 
                     // Quick actions
-                    Text(s.quickActions, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    Text(s.quickActions,
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        Expanded(child: _QuickAction(
+                        Expanded(
+                            child: _QuickAction(
                           icon: Icons.add_circle_rounded,
                           label: policy == null ? s.buyPolicy : s.buyPolicy,
                           color: AppTheme.primary,
@@ -175,15 +223,22 @@ class HomeScreen extends ConsumerWidget {
                         )),
                         if (ref.watch(devModeProvider)) ...[
                           const SizedBox(width: 12),
-                          Expanded(child: _QuickAction(
+                          Expanded(
+                              child: _QuickAction(
                             icon: Icons.cloud_rounded,
                             label: s.simulateEvent,
                             color: AppTheme.warning,
                             onTap: () => _simulate(
-                context, ref, s,
-                (worker['city'] as String?)?.isNotEmpty == true ? worker['city'] as String : 'Bangalore',
-                (worker['pincode'] as String?)?.isNotEmpty == true ? worker['pincode'] as String : '560001',
-              ),
+                              context,
+                              ref,
+                              s,
+                              (worker['city'] as String?)?.isNotEmpty == true
+                                  ? worker['city'] as String
+                                  : 'Bangalore',
+                              (worker['pincode'] as String?)?.isNotEmpty == true
+                                  ? worker['pincode'] as String
+                                  : '560001',
+                            ),
                           )),
                         ],
                       ],
@@ -195,11 +250,16 @@ class HomeScreen extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(s.claims, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                          TextButton(onPressed: () => context.go('/claims'), child: Text(s.seeAll)),
+                          Text(s.claims,
+                              style: const TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700)),
+                          TextButton(
+                              onPressed: () => context.go('/claims'),
+                              child: Text(s.seeAll)),
                         ],
                       ),
-                      ...claims.take(3).map((c) => _ClaimTile(claim: c as Map<String, dynamic>, s: s)),
+                      ...claims.take(3).map((c) =>
+                          _ClaimTile(claim: c as Map<String, dynamic>, s: s)),
                     ],
 
                     const SizedBox(height: 32),
@@ -213,13 +273,15 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  void _simulate(BuildContext context, WidgetRef ref, AppStrings s, String city, String pincode) async {
+  void _simulate(BuildContext context, WidgetRef ref, AppStrings s, String city,
+      String pincode) async {
     final messenger = ScaffoldMessenger.of(context);
     final api = ref.read(apiServiceProvider);
     try {
       final events = await api.simulateDisruption(city, pincode);
       if (events.isEmpty) {
-        messenger.showSnackBar(const SnackBar(content: Text('No disruptions detected in your area right now')));
+        messenger.showSnackBar(const SnackBar(
+            content: Text('No disruptions detected in your area right now')));
         return;
       }
 
@@ -238,27 +300,31 @@ class HomeScreen extends ConsumerWidget {
       if (eventId != null) {
         await Future.delayed(const Duration(milliseconds: 800));
         try {
-          await api.triggerClaim(eventId);
+          final claim = await api.triggerClaim(eventId);
+          final amount = (claim['approved_amount'] as num?)?.toDouble();
           if (context.mounted) {
             messenger.showSnackBar(SnackBar(
-              content: Text('Claim auto-triggered! ₹ payout initiated.'),
+              content: Text(amount == null
+                  ? 'Claim submitted for review.'
+                  : 'Claim auto-triggered. Payout: Rs.${amount.toStringAsFixed(0)}'),
               backgroundColor: AppTheme.success,
               duration: const Duration(seconds: 4),
             ));
           }
         } catch (claimErr) {
-          final errStr = claimErr.toString();
+          final errStr = _friendlyClaimError(claimErr, s.noActivePolicy);
           if (context.mounted) {
-            // Use generic message for all claim errors
             messenger.showSnackBar(SnackBar(
-              content: Text(s.noActivePolicy),
+              content: Text(errStr),
               backgroundColor: AppTheme.warning,
               duration: const Duration(seconds: 4),
-              action: SnackBarAction(
-                label: 'Buy Now',
-                textColor: Colors.white,
-                onPressed: () => context.go('/policy/buy'),
-              ),
+              action: errStr == s.noActivePolicy
+                  ? SnackBarAction(
+                      label: 'Buy Now',
+                      textColor: Colors.white,
+                      onPressed: () => context.go('/policy/buy'),
+                    )
+                  : null,
             ));
           }
         }
@@ -270,11 +336,32 @@ class HomeScreen extends ConsumerWidget {
         ref.invalidate(claimsProvider);
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: AppTheme.danger));
+      messenger.showSnackBar(SnackBar(
+          content: Text('Error: $e'), backgroundColor: AppTheme.danger));
     }
   }
 
-  SliverAppBar _buildAppBar(BuildContext context, Map<String, dynamic> worker, dynamic s) {
+  String _friendlyClaimError(Object error, String noActivePolicyText) {
+    final text = error.toString();
+    final known = <String>[
+      'No active policy found',
+      'Policy has expired',
+      'Already claimed this disruption event',
+      'Weekly payout cap reached for this policy',
+      'Disruption event is not in your city',
+      'not covered',
+      'Simulation is available only in dev mode',
+    ];
+    for (final item in known) {
+      if (text.contains(item)) {
+        return item == 'No active policy found' ? noActivePolicyText : item;
+      }
+    }
+    return 'Claim could not be triggered. Please refresh and try again.';
+  }
+
+  SliverAppBar _buildAppBar(
+      BuildContext context, Map<String, dynamic> worker, dynamic s) {
     return SliverAppBar(
       expandedHeight: 120,
       floating: true,
@@ -291,11 +378,13 @@ class HomeScreen extends ConsumerWidget {
                 children: [
                   Text(
                     '${s.hello}, ${(worker['name'] as String?)?.split(' ').first ?? 'Rider'}',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.w800),
                   ),
                   Text(
                     '${worker['city'] ?? ''} • ${(worker['platform'] as String?)?.toUpperCase() ?? ''}',
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                    style: const TextStyle(
+                        color: AppTheme.textSecondary, fontSize: 14),
                   ),
                 ],
               ),
@@ -309,19 +398,25 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 child: Consumer(
                   builder: (context, ref, _) {
-                    final notifs = ref.watch(notificationsProvider).valueOrNull ?? [];
-                    final unread = notifs.where((n) => n['is_read'] == false).length;
+                    final notifs =
+                        ref.watch(notificationsProvider).valueOrNull ?? [];
+                    final unread =
+                        notifs.where((n) => n['is_read'] == false).length;
                     return Stack(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.notifications_outlined, color: AppTheme.primary),
-                          onPressed: () => _showNotifications(context, ref, notifs),
+                          icon: const Icon(Icons.notifications_outlined,
+                              color: AppTheme.primary),
+                          onPressed: () =>
+                              _showNotifications(context, ref, notifs),
                         ),
                         if (unread > 0)
                           Positioned(
-                            right: 8, top: 8,
+                            right: 8,
+                            top: 8,
                             child: Container(
-                              width: 8, height: 8,
+                              width: 8,
+                              height: 8,
                               decoration: const BoxDecoration(
                                 color: AppTheme.danger,
                                 shape: BoxShape.circle,
@@ -351,14 +446,16 @@ class _ShieldCard extends StatefulWidget {
   State<_ShieldCard> createState() => _ShieldCardState();
 }
 
-class _ShieldCardState extends State<_ShieldCard> with SingleTickerProviderStateMixin {
+class _ShieldCardState extends State<_ShieldCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800))
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1800))
       ..repeat(reverse: true);
     _pulse = Tween<double>(begin: 0.0, end: 10.0)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
@@ -376,9 +473,11 @@ class _ShieldCardState extends State<_ShieldCard> with SingleTickerProviderState
     final hasPolicy = widget.policy != null;
     final tier = widget.policy?['tier'] as String? ?? '';
     final tierLabel = AppConstants.tierLabels[tier] ?? s.noPolicyActive;
-    final premium = (widget.policy?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '0';
+    final premium =
+        (widget.policy?['weekly_premium'] as num?)?.toStringAsFixed(0) ?? '0';
     final endDate = widget.policy?['end_date'] != null
-        ? DateFormat('dd MMM').format(DateTime.parse(widget.policy!['end_date']))
+        ? DateFormat('dd MMM')
+            .format(DateTime.parse(widget.policy!['end_date']))
         : null;
 
     return AnimatedBuilder(
@@ -397,11 +496,14 @@ class _ShieldCardState extends State<_ShieldCard> with SingleTickerProviderState
             ),
             borderRadius: BorderRadius.circular(20),
             boxShadow: hasPolicy
-                ? [BoxShadow(
-                    color: const Color(0xFF1A56DB).withOpacity(0.25 + _pulse.value * 0.025),
-                    blurRadius: 12 + _pulse.value,
-                    spreadRadius: _pulse.value * 0.25,
-                  )]
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF1A56DB)
+                          .withOpacity(0.25 + _pulse.value * 0.025),
+                      blurRadius: 12 + _pulse.value,
+                      spreadRadius: _pulse.value * 0.25,
+                    )
+                  ]
                 : null,
           ),
           child: Row(
@@ -412,36 +514,48 @@ class _ShieldCardState extends State<_ShieldCard> with SingleTickerProviderState
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.shield_rounded, color: Colors.white, size: 20),
+                        const Icon(Icons.shield_rounded,
+                            color: Colors.white, size: 20),
                         const SizedBox(width: 6),
                         Text(
                           hasPolicy ? tierLabel : s.noActivePolicy,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     if (hasPolicy) ...[
                       Text('₹$premium/week • Valid till $endDate',
-                          style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 13)),
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.85),
+                              fontSize: 13)),
                     ] else ...[
                       Text(s.protectionDesc,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 13)),
+                          style: TextStyle(
+                              color: Colors.white.withOpacity(0.85),
+                              fontSize: 13)),
                     ],
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   hasPolicy ? s.active.toUpperCase() : s.buyNow.toUpperCase(),
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12),
                 ),
               ),
             ],
@@ -456,7 +570,11 @@ class _StatCard extends StatelessWidget {
   final String label, value;
   final IconData icon;
   final Color color;
-  const _StatCard({required this.label, required this.value, required this.icon, required this.color});
+  const _StatCard(
+      {required this.label,
+      required this.value,
+      required this.icon,
+      required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -472,9 +590,13 @@ class _StatCard extends StatelessWidget {
         children: [
           Icon(icon, color: color, size: 22),
           const SizedBox(height: 10),
-          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+          Text(label,
+              style:
+                  const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
         ],
       ),
     );
@@ -501,7 +623,8 @@ class _DisruptionTileState extends ConsumerState<_DisruptionTile>
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 400));
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 400));
     _slide = Tween<Offset>(begin: const Offset(-0.4, 0), end: Offset.zero)
         .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
     _fade = Tween<double>(begin: 0, end: 1)
@@ -523,7 +646,8 @@ class _DisruptionTileState extends ConsumerState<_DisruptionTile>
     final severity = widget.data['severity'] as String? ?? 'moderate';
     final dss = (widget.data['dss_multiplier'] as num?)?.toDouble() ?? 0.3;
     final label = AppConstants.disruptionLabels[type] ?? type;
-    final severityColor = Color(AppConstants.severityColors[severity] ?? 0xFFF59E0B);
+    final severityColor =
+        Color(AppConstants.severityColors[severity] ?? 0xFFF59E0B);
 
     return FadeTransition(
       opacity: _fade,
@@ -545,25 +669,32 @@ class _DisruptionTileState extends ConsumerState<_DisruptionTile>
                   color: severityColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.warning_rounded, color: severityColor, size: 20),
+                child:
+                    Icon(Icons.warning_rounded, color: severityColor, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    Text(label,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 14)),
                     Text(
                       '${severity.toUpperCase()} • DSS: ${(dss * 100).toInt()}%',
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      style: const TextStyle(
+                          fontSize: 12, color: AppTheme.textSecondary),
                     ),
                   ],
                 ),
               ),
-              if (widget.policyId != null)
+              if (widget.policyId != null && false) // removed claim button — auto-triggered
                 TextButton(
-                  onPressed: () => _triggerClaim(context, ref, widget.data['id'] as String?),
-                  child: const Text('Claim →', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                  onPressed: () =>
+                      _triggerClaim(context, ref, widget.data['id'] as String?),
+                  child: const Text('Claim →',
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 ),
             ],
           ),
@@ -572,7 +703,8 @@ class _DisruptionTileState extends ConsumerState<_DisruptionTile>
     );
   }
 
-  void _triggerClaim(BuildContext context, WidgetRef ref, String? eventId) async {
+  void _triggerClaim(
+      BuildContext context, WidgetRef ref, String? eventId) async {
     if (eventId == null) return;
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -587,7 +719,8 @@ class _DisruptionTileState extends ConsumerState<_DisruptionTile>
         backgroundColor: Colors.green,
       ));
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('Claim failed: $e'), backgroundColor: AppTheme.danger));
+      messenger.showSnackBar(SnackBar(
+          content: Text('Claim failed: $e'), backgroundColor: AppTheme.danger));
     }
   }
 }
@@ -608,13 +741,18 @@ class _ClearWeatherCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 28),
+          const Icon(Icons.check_circle_rounded,
+              color: AppTheme.success, size: 28),
           const SizedBox(width: 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(s.allClear, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-              Text('${s.noDisruptions} in $city', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+              Text(s.allClear,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 15)),
+              Text('${s.noDisruptions} in $city',
+                  style: const TextStyle(
+                      color: AppTheme.textSecondary, fontSize: 13)),
             ],
           ),
         ],
@@ -628,7 +766,11 @@ class _QuickAction extends StatelessWidget {
   final String label;
   final Color color;
   final VoidCallback onTap;
-  const _QuickAction({required this.icon, required this.label, required this.color, required this.onTap});
+  const _QuickAction(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -645,7 +787,12 @@ class _QuickAction extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 22),
             const SizedBox(width: 8),
-            Expanded(child: Text(label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: color))),
+            Expanded(
+                child: Text(label,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                        color: color))),
           ],
         ),
       ),
@@ -661,21 +808,26 @@ class _ClaimTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = claim['status'] as String? ?? 'pending';
-    final amount = (claim['approved_amount'] as num?)?.toDouble() ?? (claim['claimed_amount'] as num?)?.toDouble() ?? 0;
+    final amount = (claim['approved_amount'] as num?)?.toDouble() ??
+        (claim['claimed_amount'] as num?)?.toDouble() ??
+        0;
     final date = claim['created_at'] != null
-        ? DateFormat('dd MMM').format(DateTime.parse(claim['created_at'] as String))
+        ? DateFormat('dd MMM')
+            .format(DateTime.parse(claim['created_at'] as String))
         : '';
     final statusColor = {
-      'paid': AppTheme.success,
-      'approved': AppTheme.primary,
-      'rejected': AppTheme.danger,
-      'pending': AppTheme.warning,
-    }[status] ?? AppTheme.textSecondary;
+          'paid': AppTheme.success,
+          'approved': AppTheme.primary,
+          'rejected': AppTheme.danger,
+          'pending': AppTheme.warning,
+        }[status] ??
+        AppTheme.textSecondary;
     final statusLabel = {
-      'paid': s.paid,
-      'approved': s.approved,
-      'pending': s.pending,
-    }[status] ?? status.toUpperCase();
+          'paid': s.paid,
+          'approved': s.approved,
+          'pending': s.pending,
+        }[status] ??
+        status.toUpperCase();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -691,8 +843,12 @@ class _ClaimTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Claim • $date', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                Text('₹${amount.toStringAsFixed(0)}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                Text('Claim • $date',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 14)),
+                Text('₹${amount.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                        color: AppTheme.textSecondary, fontSize: 13)),
               ],
             ),
           ),
@@ -702,7 +858,11 @@ class _ClaimTile extends StatelessWidget {
               color: statusColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Text(statusLabel, style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.w700)),
+            child: Text(statusLabel,
+                style: TextStyle(
+                    color: statusColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700)),
           ),
         ],
       ),

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text, select, func, and_
 from datetime import datetime, timedelta, timezone
@@ -6,20 +6,31 @@ from app.database import get_db
 from app.models.models import Worker, Policy, Claim, DisruptionEvent, Payout, PolicyStatus, ClaimStatus, PolicyTier
 from app.services.actuarial_service import calculate_bcr, stress_test_monsoon
 from app.services.disruption_service import TRIGGER_PROBABILITY
+from app.config import settings
 
 router = APIRouter()
 
 
+async def require_admin(x_admin_api_key: str = Header(default="")):
+    if settings.ENVIRONMENT != "production" and not settings.ADMIN_API_KEY:
+        return True
+    if not settings.ADMIN_API_KEY or x_admin_api_key != settings.ADMIN_API_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return True
+
+
 @router.delete("/clear-test-data")
-async def clear_test_data(db: AsyncSession = Depends(get_db)):
+async def clear_test_data(db: AsyncSession = Depends(get_db), _: bool = Depends(require_admin)):
     """Clear all test data — resets DB for fresh demo."""
+    if settings.ENVIRONMENT == "production":
+        raise HTTPException(status_code=404, detail="Not found")
     await db.execute(text("TRUNCATE TABLE payouts, claims, policies, disruption_events, workers CASCADE"))
     await db.commit()
     return {"message": "All test data cleared. DB is fresh for demo."}
 
 
 @router.get("/stats")
-async def get_admin_stats(db: AsyncSession = Depends(get_db)):
+async def get_admin_stats(db: AsyncSession = Depends(get_db), _: bool = Depends(require_admin)):
     """Get overview statistics for the admin dashboard."""
     now = datetime.now(timezone.utc)
     week_ago = now - timedelta(days=7)
@@ -88,7 +99,7 @@ async def get_admin_stats(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/claims")
-async def list_all_claims(db: AsyncSession = Depends(get_db)):
+async def list_all_claims(db: AsyncSession = Depends(get_db), _: bool = Depends(require_admin)):
     """List all claims for admin."""
     result = await db.execute(
         select(Claim, Worker, DisruptionEvent)
@@ -113,7 +124,7 @@ async def list_all_claims(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/workers")
-async def list_all_workers(db: AsyncSession = Depends(get_db)):
+async def list_all_workers(db: AsyncSession = Depends(get_db), _: bool = Depends(require_admin)):
     """List all workers for admin."""
     result = await db.execute(select(Worker).order_by(Worker.created_at.desc()).limit(100))
     workers = []
@@ -132,7 +143,7 @@ async def list_all_workers(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/disruptions")
-async def list_all_disruptions(db: AsyncSession = Depends(get_db)):
+async def list_all_disruptions(db: AsyncSession = Depends(get_db), _: bool = Depends(require_admin)):
     """List all disruptions for admin."""
     result = await db.execute(select(DisruptionEvent).order_by(DisruptionEvent.created_at.desc()).limit(100))
     disruptions = []
@@ -149,7 +160,7 @@ async def list_all_disruptions(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/analytics")
-async def get_analytics(db: AsyncSession = Depends(get_db)):
+async def get_analytics(db: AsyncSession = Depends(get_db), _: bool = Depends(require_admin)):
     """Predictive analytics + BCR + loss ratio for admin insurer dashboard."""
     now = datetime.now(timezone.utc)
 
@@ -226,7 +237,7 @@ async def get_analytics(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/claims/{claim_id}/fraud")
-async def get_claim_fraud_detail(claim_id: str, db: AsyncSession = Depends(get_db)):
+async def get_claim_fraud_detail(claim_id: str, db: AsyncSession = Depends(get_db), _: bool = Depends(require_admin)):
     """Get detailed fraud analysis for a specific claim."""
     import json
     result = await db.execute(

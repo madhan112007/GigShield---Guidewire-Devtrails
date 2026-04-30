@@ -10,8 +10,8 @@ class OTPRequest(BaseModel):
     phone: str = Field(..., pattern=r"^\+?[0-9]{10,15}$")
 
 class OTPVerify(BaseModel):
-    phone: str
-    otp: str
+    phone: str = Field(..., pattern=r"^\+?[0-9]{10,15}$")
+    otp: str = Field(..., pattern=r"^[0-9]{6}$")
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -19,6 +19,7 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     worker_id: Optional[str] = None
     is_new_user: bool = False
+    is_dev_mode: bool = False
 
 
 # ── Worker ────────────────────────────────────────────────────────────────────
@@ -38,7 +39,6 @@ class WorkerUpdate(BaseModel):
     upi_id: Optional[str] = None
     bank_account: Optional[str] = None
     bank_ifsc: Optional[str] = None
-    avg_daily_earnings: Optional[float] = None
 
 class WorkerResponse(BaseModel):
     id: str

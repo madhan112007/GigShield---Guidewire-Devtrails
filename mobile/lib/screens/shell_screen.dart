@@ -34,11 +34,31 @@ class ShellScreen extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _NavItem(icon: Icons.home_rounded, label: s.home, active: idx == 0, onTap: () => context.go('/home')),
-                _NavItem(icon: Icons.shield_rounded, label: s.policy, active: idx == 1, onTap: () => context.go('/policy')),
-                _NavItem(icon: Icons.receipt_long_rounded, label: s.claims, active: idx == 2, onTap: () => context.go('/claims')),
-                _NavItem(icon: Icons.monitor_heart_rounded, label: s.risk, active: idx == 3, onTap: () => context.go('/risk')),
-                _NavItem(icon: Icons.person_rounded, label: s.profile, active: idx == 4, onTap: () => context.go('/profile')),
+                _NavItem(
+                    icon: Icons.home_rounded,
+                    label: s.home,
+                    active: idx == 0,
+                    onTap: () => context.go('/home')),
+                _NavItem(
+                    icon: Icons.shield_rounded,
+                    label: s.policy,
+                    active: idx == 1,
+                    onTap: () => context.go('/policy')),
+                _NavItem(
+                    icon: Icons.receipt_long_rounded,
+                    label: s.claims,
+                    active: idx == 2,
+                    onTap: () => context.go('/claims')),
+                _NavItem(
+                    icon: Icons.monitor_heart_rounded,
+                    label: s.risk,
+                    active: idx == 3,
+                    onTap: () => context.go('/risk')),
+                _NavItem(
+                    icon: Icons.person_rounded,
+                    label: s.profile,
+                    active: idx == 4,
+                    onTap: () => context.go('/profile')),
               ],
             ),
           ),
@@ -53,7 +73,11 @@ class _NavItem extends StatelessWidget {
   final String label;
   final bool active;
   final VoidCallback onTap;
-  const _NavItem({required this.icon, required this.label, required this.active, required this.onTap});
+  const _NavItem(
+      {required this.icon,
+      required this.label,
+      required this.active,
+      required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +96,9 @@ class _NavItem extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, color: active ? AppTheme.primary : AppTheme.textHint, size: 24),
+              Icon(icon,
+                  color: active ? AppTheme.primary : AppTheme.textHint,
+                  size: 24),
               const SizedBox(height: 2),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),

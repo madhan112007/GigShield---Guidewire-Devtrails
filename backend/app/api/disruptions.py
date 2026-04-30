@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
 from app.database import get_db
 from app.models.models import DisruptionEvent, Worker
 from app.schemas.schemas import DisruptionEventResponse
-from app.services.auth_service import get_current_worker
+from app.services.auth_service import get_current_worker, get_current_auth_context, AuthContext
 from app.services.disruption_service import check_disruptions
+from app.services.notification_service import notify_disruption_detected
 from app.config import settings
 
 router = APIRouter()
@@ -32,12 +33,19 @@ async def simulate_disruption(
     city: str = Query(...),
     pincode: str = Query(...),
     db: AsyncSession = Depends(get_db),
-    current_worker: Worker = Depends(get_current_worker),
+    auth: AuthContext = Depends(get_current_auth_context),
 ):
     """Simulate disruptions — always creates at least one event for demo."""
     from app.models.models import DisruptionType, DisruptionSeverity
     from app.services.disruption_service import get_dss
     from datetime import timedelta, timezone
+
+    if not settings.DEMO_MODE_ENABLED or not auth.is_dev_mode or settings.ENVIRONMENT == "production":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Simulation is available only in dev mode")
+
+    current_worker = auth.worker
+    city = current_worker.city or city
+    pincode = current_worker.pincode or pincode
 
     events_data = await check_disruptions(city=city, pincode=pincode)
 
@@ -90,6 +98,15 @@ async def simulate_disruption(
     await db.commit()
     for e in events:
         await db.refresh(e)
+        await notify_disruption_detected(
+            db=db,
+            worker_ids=[current_worker.id],
+            city=e.city,
+            severity=e.severity.value,
+            disruption_type=e.disruption_type.value,
+            event_id=e.id,
+        )
+    await db.commit()
 
     return events
 
