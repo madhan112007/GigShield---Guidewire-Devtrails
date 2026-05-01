@@ -1269,7 +1269,7 @@ function OverviewPage({ data }) {
           <div className="card-header">
             <h3 className="card-title">Fraud Risk Score</h3>
           </div>
-          <AnimatedFraudGauge value={data.fraud_summary?.avg_score ?? 35} />
+          <AnimatedFraudGauge value={(() => { const fs = data.fraud_summary; if (!fs) return 0; const t = (fs.auto_approved||0)+(fs.auto_rejected||0)+(fs.under_review||0); return t===0?0:Math.round(((fs.auto_rejected||0)+(fs.under_review||0))/t*100); })()} />
         </motion.div>
       </div>
     </motion.div>
@@ -1533,7 +1533,7 @@ function WorkersPage({ data }) {
 
 const MOCK_STATS = {
   metrics: { active_workers: 2847, active_policies: 3452, claims_this_week: 234, payouts_this_week: 156000 },
-  fraud_summary: { avg_score: 35, auto_approved: 89, auto_rejected: 12, under_review: 8 },
+  fraud_summary: { auto_approved: 0, auto_rejected: 0, under_review: 0 },
   active_disruptions: [
     { city: 'Mumbai', type: 'Rain', severity: 'severe', dss: 1.2 },
     { city: 'Delhi', type: 'Heatwave', severity: 'extreme', dss: 1.5 },
