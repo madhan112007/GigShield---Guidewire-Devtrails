@@ -16,11 +16,20 @@ router = APIRouter()
 # City pools — which disruption types are valid per city
 # Delhi/NCR: AQI + Heat pool | Mumbai/Bangalore: Rain pool | All: Civic + Traffic
 CITY_POOLS = {
-    "Delhi":     [DisruptionType.AQI_SPIKE, DisruptionType.EXTREME_HEAT, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
-    "Mumbai":    [DisruptionType.HEAVY_RAIN, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
-    "Bangalore": [DisruptionType.HEAVY_RAIN, DisruptionType.AQI_SPIKE, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
-    "Chennai":   [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
-    "Hyderabad": [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Delhi":          [DisruptionType.AQI_SPIKE, DisruptionType.EXTREME_HEAT, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Mumbai":         [DisruptionType.HEAVY_RAIN, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Bangalore":      [DisruptionType.HEAVY_RAIN, DisruptionType.AQI_SPIKE, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Chennai":        [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
+    "Hyderabad":      [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Coimbatore":     [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Tiruchirappalli":[DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
+    "Madurai":        [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
+    "Salem":          [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
+    "Pune":           [DisruptionType.HEAVY_RAIN, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Kolkata":        [DisruptionType.HEAVY_RAIN, DisruptionType.AQI_SPIKE, DisruptionType.CIVIC_EMERGENCY],
+    "Ahmedabad":      [DisruptionType.EXTREME_HEAT, DisruptionType.AQI_SPIKE, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Lucknow":        [DisruptionType.EXTREME_HEAT, DisruptionType.AQI_SPIKE, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Patna":          [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
 }
 
 # Active hours: delivery workers operate 6am-10pm IST

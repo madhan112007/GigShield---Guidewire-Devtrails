@@ -125,6 +125,7 @@ def _ml_predict_premium(
     pincode: str,
     worker_history_factor: float,
     platform_activity_score: float,
+    zone_risk: float = 1.0,
 ) -> float | None:
     """Use XGBoost model if available; return None to fall back to rule-based."""
     if _ml_model is None:
@@ -133,16 +134,13 @@ def _ml_predict_premium(
         prefix = int(pincode[:1]) if pincode else 0
         month = datetime.now().month
         tier_idx = _TIER_IDX[tier]
-        tenure_weeks = 0  # unknown at quote time; use 0 (conservative)
-        zone_risk = get_zone_risk(pincode)
+        tenure_weeks = 0
         season = get_season_factor()
-        # Use moderate rain (0) as default disruption context for premium quoting
         features = np.array([[prefix, month, tier_idx, tenure_weeks,
                                platform_activity_score, zone_risk, season,
                                0, 0, 0.3, 0]])
         pred = float(_ml_model.predict(features)[0])
         base = BASE_PREMIUMS[tier]
-        # Clamp to ±40% of base to prevent wild extrapolation
         return round(max(base * 0.6, min(base * 1.6, pred * worker_history_factor)), 2)
     except Exception:
         return None
@@ -169,7 +167,7 @@ async def calculate_premium(
     else:
         zone_risk = get_sub_zone_risk(pincode)
 
-    ml_premium = _ml_predict_premium(tier, pincode, worker_history_factor, platform_activity_score)
+    ml_premium = _ml_predict_premium(tier, pincode, worker_history_factor, platform_activity_score, zone_risk)
     if ml_premium is not None:
         adjusted = ml_premium
     else:

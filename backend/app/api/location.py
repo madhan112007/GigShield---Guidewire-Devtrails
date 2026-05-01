@@ -36,21 +36,72 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return R * 2 * atan2(sqrt(a), sqrt(1 - a))
 
 
-def _detect_city(lat: float, lng: float) -> tuple:
-    """Rough city detection from coordinates."""
+import httpx
+from app.config import settings
+
+
+async def _detect_city_positionstack(lat: float, lng: float) -> str:
+    """Reverse geocode lat/lng to city using Positionstack API."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(
+                "http://api.positionstack.com/v1/reverse",
+                params={
+                    "access_key": "REMOVED_API_KEY",
+                    "query": f"{lat},{lng}",
+                    "country": "IN",
+                    "limit": 1,
+                },
+            )
+            data = r.json()
+            result = (data.get("data") or [{}])[0]
+            # Try locality first (most specific), then county, then region
+            city = (
+                result.get("locality")
+                or result.get("county")
+                or result.get("region")
+                or ""
+            )
+            return city.strip()
+    except Exception:
+        return ""
+
+
+def _detect_city_fallback(lat: float, lng: float) -> str:
+    """Bounding-box fallback for major cities when Positionstack is unavailable."""
     city_bounds = {
-        "Delhi":     (28.4, 28.9, 76.8, 77.4),
-        "Mumbai":    (18.9, 19.3, 72.7, 73.0),
-        "Bangalore": (12.8, 13.2, 77.4, 77.8),
-        "Chennai":   (12.9, 13.2, 80.1, 80.4),
-        "Hyderabad": (17.2, 17.6, 78.3, 78.7),
-        "Pune":      (18.4, 18.7, 73.7, 74.0),
-        "Kolkata":   (22.4, 22.7, 88.2, 88.5),
+        "Delhi": (28.40, 28.90, 76.80, 77.40),
+        "Mumbai": (18.90, 19.30, 72.70, 73.00),
+        "Bangalore": (12.80, 13.20, 77.40, 77.80),
+        "Chennai": (12.90, 13.25, 80.10, 80.40),
+        "Hyderabad": (17.20, 17.60, 78.30, 78.70),
+        "Pune": (18.40, 18.70, 73.70, 74.05),
+        "Kolkata": (22.40, 22.70, 88.20, 88.50),
+        "Ahmedabad": (22.90, 23.20, 72.40, 72.80),
+        "Coimbatore": (10.85, 11.15, 76.85, 77.15),
+        "Madurai": (9.85, 10.05, 77.95, 78.20),
+        "Tiruchirappalli": (10.70, 10.90, 78.55, 78.80),
+        "Kochi": (9.90, 10.10, 76.20, 76.40),
+        "Chandigarh": (30.60, 30.85, 76.65, 76.90),
+        "Jaipur": (26.70, 27.00, 75.60, 76.00),
+        "Lucknow": (26.70, 27.00, 80.80, 81.20),
+        "Patna": (25.50, 25.75, 85.00, 85.30),
+        "Bhopal": (23.10, 23.40, 77.20, 77.60),
+        "Indore": (22.60, 22.85, 75.70, 76.00),
+        "Nagpur": (21.00, 21.30, 78.90, 79.20),
+        "Visakhapatnam": (17.60, 17.85, 83.10, 83.40),
+        "Surat": (21.10, 21.30, 72.70, 72.95),
+        "Vadodara": (22.20, 22.45, 73.10, 73.35),
+        "Noida": (28.45, 28.65, 77.25, 77.55),
+        "Gurgaon": (28.35, 28.55, 76.95, 77.15),
+        "Ranchi": (23.25, 23.45, 85.25, 85.45),
+        "Bhubaneswar": (20.15, 20.40, 85.70, 85.95),
+        "Guwahati": (26.05, 26.25, 91.60, 91.90),
     }
     for city, (lat_min, lat_max, lng_min, lng_max) in city_bounds.items():
         if lat_min <= lat <= lat_max and lng_min <= lng <= lng_max:
-            return city, ""
-    return "", ""
+            return city
+    return ""
 
 
 @router.post("/ping")
@@ -90,7 +141,12 @@ async def location_ping(
         if speed_kmh > MAX_REALISTIC_SPEED_KMH:
             is_suspicious = True
 
-    city_detected, pincode_detected = _detect_city(payload.lat, payload.lng)
+    city_detected = await _detect_city_positionstack(payload.lat, payload.lng)
+    if not city_detected:
+        city_detected = _detect_city_fallback(payload.lat, payload.lng)
+    if not city_detected:
+        city_detected = current_worker.city
+    pincode_detected = current_worker.pincode
 
     ping = WorkerLocationPing(
         worker_id=current_worker.id,
@@ -100,8 +156,8 @@ async def location_ping(
         speed_kmh=speed_kmh,
         distance_km=distance_km,
         is_suspicious=is_suspicious,
-        city_detected=city_detected or current_worker.city,
-        pincode_detected=pincode_detected or current_worker.pincode,
+        city_detected=city_detected,
+        pincode_detected=pincode_detected,
     )
     db.add(ping)
 
@@ -114,7 +170,7 @@ async def location_ping(
 
     return {
         "status": "recorded",
-        "city_detected": city_detected or current_worker.city,
+        "city_detected": city_detected,
         "distance_km": distance_km,
         "speed_kmh": speed_kmh,
         "is_suspicious": is_suspicious,
