@@ -82,7 +82,39 @@ def _fallback_score(city: str, pincode: str) -> float:
     return 0.65
 
 
-async def get_infra_score(city: str, pincode: str) -> float:
+async def get_infra_adjusted_dss(
+    base_dss: float,
+    city: str,
+    pincode: str,
+    disruption_type: str = "heavy_rain",
+) -> tuple[float, float]:
+    """
+    Adjust DSS based on ward-level infrastructure score from Gemini AI.
+    Returns (adjusted_dss, infra_score).
+
+    Poor infra (flooding, bad roads) amplifies income loss.
+    Good infra (drainage, metro) reduces income loss.
+
+    Only rain and traffic are infra-sensitive.
+    Heat, AQI, civic emergencies affect workers regardless of infra.
+
+    Amplifier range: 0.85 (excellent infra) to 1.40 (very poor infra)
+    Fallback: base_dss unchanged if Gemini unavailable.
+    """
+    # Heat, AQI, civic emergencies are infra-independent
+    if disruption_type in ("extreme_heat", "aqi_spike", "civic_emergency"):
+        return base_dss, 0.65
+
+    try:
+        infra = await get_infra_score(city, pincode)
+    except Exception:
+        return base_dss, 0.65
+
+    # Map infra score 0.30→0.85 and 1.0→1.40 linearly
+    amplifier = round(0.85 + (infra - 0.30) * (0.55 / 0.70), 3)
+    amplifier = max(0.85, min(1.40, amplifier))
+    adjusted_dss = round(min(base_dss * amplifier, 1.0), 3)
+    return adjusted_dss, infra
     """
     Get infrastructure resilience score for a location.
     Lower = better infra (lower risk premium).

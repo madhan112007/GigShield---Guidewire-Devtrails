@@ -40,8 +40,8 @@ import httpx
 from app.config import settings
 
 
-async def _detect_city_positionstack(lat: float, lng: float) -> str:
-    """Reverse geocode lat/lng to city using Positionstack API."""
+async def _detect_city_positionstack(lat: float, lng: float) -> tuple[str, str]:
+    """Reverse geocode lat/lng to city and pincode using Positionstack API."""
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             r = await client.get(
@@ -55,16 +55,16 @@ async def _detect_city_positionstack(lat: float, lng: float) -> str:
             )
             data = r.json()
             result = (data.get("data") or [{}])[0]
-            # Try locality first (most specific), then county, then region
             city = (
                 result.get("locality")
                 or result.get("county")
                 or result.get("region")
                 or ""
-            )
-            return city.strip()
+            ).strip()
+            pincode = (result.get("postal_code") or "").strip()
+            return city, pincode
     except Exception:
-        return ""
+        return "", ""
 
 
 def _detect_city_fallback(lat: float, lng: float) -> str:
@@ -141,12 +141,13 @@ async def location_ping(
         if speed_kmh > MAX_REALISTIC_SPEED_KMH:
             is_suspicious = True
 
-    city_detected = await _detect_city_positionstack(payload.lat, payload.lng)
+    city_detected, pincode_detected = await _detect_city_positionstack(payload.lat, payload.lng)
     if not city_detected:
         city_detected = _detect_city_fallback(payload.lat, payload.lng)
     if not city_detected:
         city_detected = current_worker.city
-    pincode_detected = current_worker.pincode
+    if not pincode_detected:
+        pincode_detected = current_worker.pincode
 
     ping = WorkerLocationPing(
         worker_id=current_worker.id,
