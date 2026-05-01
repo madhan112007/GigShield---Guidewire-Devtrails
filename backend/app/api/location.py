@@ -155,7 +155,7 @@ async def get_weather_by_location(
             result["city_name"] = wd.get("name", "")
             result["rainfall_mm_per_hr"] = wd.get("rain", {}).get("1h", 0.0)
             result["visibility_km"] = round(wd.get("visibility", 10000) / 1000, 1)
-        except Exception as e:
+        except (httpx.HTTPError, KeyError, ValueError, TypeError, IndexError) as e:
             result["weather_error"] = str(e)
 
         # AQI by coordinates
@@ -175,7 +175,7 @@ async def get_weather_by_location(
             result["pm10"] = round(components.get("pm10", 0), 1)
             result["no2"] = round(components.get("no2", 0), 1)
             result["co"] = round(components.get("co", 0), 1)
-        except Exception as e:
+        except (httpx.HTTPError, KeyError, ValueError, TypeError, IndexError) as e:
             result["aqi_error"] = str(e)
 
     return result

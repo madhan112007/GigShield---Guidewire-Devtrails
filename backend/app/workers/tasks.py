@@ -342,6 +342,12 @@ def expire_old_policies():
 @celery_app.task(name="app.workers.tasks.process_auto_claims")
 def process_auto_claims(disruption_event_id: str, city: str):
     """Manually trigger auto-claims for a specific disruption event."""
+    import re
+    if not re.fullmatch(r"[0-9a-f\-]{36}", disruption_event_id or ""):
+        return {"error": "Invalid disruption_event_id"}
+    if city not in {c for c, _ in SUPPORTED_CITIES}:
+        return {"error": "Invalid city"}
+
     async def _run_claims():
         from app.database import AsyncSessionLocal
         async with AsyncSessionLocal() as db:

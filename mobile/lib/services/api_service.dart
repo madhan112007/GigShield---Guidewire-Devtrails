@@ -13,8 +13,8 @@ class ApiService {
   ApiService() {
     _dio = Dio(BaseOptions(
       baseUrl: AppConstants.baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 60),
+      connectTimeout: AppConstants.connectTimeout,
+      receiveTimeout: AppConstants.receiveTimeout,
       headers: {'Content-Type': 'application/json'},
     ));
 
@@ -27,11 +27,19 @@ class ApiService {
         return handler.next(options);
       },
       onError: (DioException e, handler) async {
+        // Surface a readable message for connection failures
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.connectionError) {
+          return handler.next(DioException(
+            requestOptions: e.requestOptions,
+            type: e.type,
+            error: 'Cannot reach server. Check your internet connection.',
+          ));
+        }
         if (e.response?.statusCode == 401) {
-          // Attempt silent token refresh before giving up
           final refreshed = await _tryRefresh();
           if (refreshed) {
-            // Retry the original request with the new token
             final token = await _storage.read(key: AppConstants.accessTokenKey);
             final opts = e.requestOptions;
             opts.headers['Authorization'] = 'Bearer $token';
@@ -40,7 +48,6 @@ class ApiService {
               return handler.resolve(response);
             } catch (_) {}
           }
-          // Refresh failed — clear storage so app redirects to login
           await _storage.deleteAll();
           return handler.next(DioException(
             requestOptions: e.requestOptions,

@@ -25,7 +25,7 @@ class TokenResponse(BaseModel):
 # ── Worker ────────────────────────────────────────────────────────────────────
 
 class WorkerCreate(BaseModel):
-    phone: str
+    phone: Optional[str] = None
     name: str
     platform: Platform
     city: str

@@ -26,10 +26,10 @@ class AuthContext:
 
 # Redis-backed OTP store — shared across all gunicorn workers
 try:
-    _redis = redis_client.from_url(settings.REDIS_URL, decode_responses=True)
+    _redis = redis_client.from_url(settings.REDIS_URL, decode_responses=True, socket_connect_timeout=2)
     _redis.ping()
     _use_redis = True
-except Exception:
+except redis_client.RedisError:
     _use_redis = False
     otp_store: dict = {}
 
@@ -51,7 +51,7 @@ def create_refresh_token(data: dict):
 async def send_otp_sms(phone: str, otp: str) -> bool:
     """Send OTP via 2Factor.in (free tier: 10k OTPs/month)."""
     api_key = settings.FAST2SMS_API_KEY.strip() if settings.FAST2SMS_API_KEY else ""
-    if not api_key or api_key == "mock_key":
+    if not api_key:
         print("[OTP] SMS not configured for " + phone[-4:].rjust(len(phone), "*"))
         return True
     number = phone.strip().lstrip("+")
@@ -65,7 +65,7 @@ async def send_otp_sms(phone: str, otp: str) -> bool:
             data = r.json()
             print("[2Factor] " + number + " status=" + str(data.get("Status")))
             return data.get("Status") == "Success"
-    except Exception as e:
+    except (httpx.HTTPError, ValueError) as e:
         print("[2Factor ERROR] " + str(e))
         return False
 

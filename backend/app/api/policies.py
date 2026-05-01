@@ -29,7 +29,7 @@ async def create_order(
     current_worker: Worker = Depends(get_current_worker),
 ):
     pincode = payload.pincode or current_worker.pincode
-    premium_data = calculate_premium(tier=payload.tier, pincode=pincode)
+    premium_data = await calculate_premium(tier=payload.tier, pincode=pincode, city=current_worker.city)
     amount_paise = int(premium_data["adjusted_premium"] * 100)
 
     if _is_mock():
@@ -89,9 +89,10 @@ async def get_quote(
     tier: PolicyTier = PolicyTier.SMART,
     current_worker: Worker = Depends(get_current_worker),
 ):
-    result = calculate_premium(
+    result = await calculate_premium(
         tier=tier,
         pincode=current_worker.pincode,
+        city=current_worker.city,
         worker_history_factor=1.0,
         platform_activity_score=1.0,
     )
@@ -171,7 +172,7 @@ async def _activate_policy(tier, pincode_override, worker: Worker, db: AsyncSess
         await db.flush()
 
     pincode = pincode_override or worker.pincode
-    premium_data = calculate_premium(tier=tier, pincode=pincode)
+    premium_data = await calculate_premium(tier=tier, pincode=pincode, city=worker.city)
 
     policy = Policy(
         worker_id=worker.id,
