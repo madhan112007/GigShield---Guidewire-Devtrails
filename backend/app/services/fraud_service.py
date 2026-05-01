@@ -98,10 +98,8 @@ def calculate_fraud_score(
         score += 10
         flags.append(f"ELEVATED_CLAIM_FREQUENCY: {claims_this_week} claims this week")
 
-    # Rule 3b: Individual behavioral baseline — compare to worker's OWN history
-    # A worker who normally claims 0.5x/week suddenly claiming 4x is more suspicious
-    # than a worker who consistently claims 3x/week.
-    if worker_avg_claims_per_week > 0 and claims_this_week > 0:
+    # Rule 3b: Individual behavioral baseline — skip for new users (avg < 0.5 = fewer than 4 real claims)
+    if worker_avg_claims_per_week >= 0.5 and claims_this_week > 0:
         deviation_ratio = claims_this_week / max(worker_avg_claims_per_week, 0.1)
         if deviation_ratio >= 4.0:
             score += 20
