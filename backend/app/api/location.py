@@ -47,7 +47,7 @@ async def _detect_city_positionstack(lat: float, lng: float) -> tuple[str, str]:
             r = await client.get(
                 "http://api.positionstack.com/v1/reverse",
                 params={
-                    "access_key": "REMOVED_API_KEY",
+                    "access_key": settings.POSITIONSTACK_API_KEY,
                     "query": f"{lat},{lng}",
                     "country": "IN",
                     "limit": 1,
