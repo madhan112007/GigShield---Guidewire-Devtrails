@@ -9,7 +9,7 @@ import hashlib
 import httpx
 from app.config import settings
 
-_GEMINI_API_KEY = "AIzaSyACmCeb-SyCXKReUYVt3vlc_klPKjBZ4i8"
+_GEMINI_API_KEY = settings.GEMINI_API_KEY
 _GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 # In-memory cache — avoids repeated API calls for same pincode

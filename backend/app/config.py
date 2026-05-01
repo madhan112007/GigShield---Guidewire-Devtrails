@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     DEMO_MODE_ENABLED: bool = True
     ADMIN_API_KEY: str = ""
     ALLOWED_ORIGINS: str = "http://16.112.121.102:3000,http://16.112.121.102:8000,https://susanoo-theultimatedefense.netlify.app"
-    GEMINI_API_KEY: str = "AIzaSyACmCeb-SyCXKReUYVt3vlc_klPKjBZ4i8"
+    GEMINI_API_KEY: str = "your_gemini_api_key_here"
     TWITTER_BEARER_TOKEN: str = "mock_key"
     TWITTER_CONSUMER_KEY: str = "mock_key"
     TWITTER_CONSUMER_SECRET: str = "mock_key"
