@@ -18,13 +18,13 @@ def _get_client() -> razorpay.Client:
 
 
 def _is_mock() -> bool:
-    return settings.RAZORPAY_KEY_ID == "rzp_test_mock"
+    return not settings.RAZORPAY_KEY_ID or settings.RAZORPAY_KEY_ID.startswith("rzp_test_mock")
 
 
 async def send_payout_sms(phone: str, amount: float, upi_id: str, transaction_ref: str, disruption: str) -> bool:
     """SMS confirmation after payout — zero-touch UX completion."""
     api_key = settings.FAST2SMS_API_KEY.strip() if settings.FAST2SMS_API_KEY else ""
-    if not api_key or api_key == "mock_key":
+    if not api_key:
         print("[SMS] Payout confirmation (not configured): " + phone + " Rs." + str(int(amount)))
         return True
     number = phone.strip().lstrip("+")
@@ -44,7 +44,7 @@ async def send_payout_sms(phone: str, amount: float, upi_id: str, transaction_re
             r = await client.get(url, timeout=10.0)
             print("[SMS] Sent to " + number + " status=" + str(r.json().get("Status")))
         return True
-    except Exception as e:
+    except (httpx.HTTPError, ValueError) as e:
         print("[SMS ERROR] " + str(e))
         return False
 
@@ -85,7 +85,7 @@ async def _razorpay_upi_payout(worker_id: str, upi_id: str, amount: float, claim
             "transaction_ref": payout.get("reference_id"),
             "status": payout.get("status"),
         }
-    except Exception as e:
+    except (razorpay.errors.BadRequestError, razorpay.errors.ServerError, ValueError) as e:
         return {"success": False, "channel": "UPI", "error": str(e)}
 
 
@@ -129,7 +129,7 @@ async def _razorpay_imps_payout(worker_id: str, bank_account: str, bank_ifsc: st
             "transaction_ref": payout.get("reference_id"),
             "status": payout.get("status"),
         }
-    except Exception as e:
+    except (razorpay.errors.BadRequestError, razorpay.errors.ServerError, ValueError) as e:
         return {"success": False, "channel": "IMPS", "error": str(e)}
 
 

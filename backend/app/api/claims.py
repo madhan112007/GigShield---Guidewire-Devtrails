@@ -8,6 +8,7 @@ from app.schemas.schemas import ClaimResponse
 from app.services.auth_service import get_current_worker
 from app.services.premium_service import calculate_payout, MAX_DAILY_PAYOUT, MAX_WEEKLY_PAYOUT
 from app.services.fraud_service import calculate_fraud_score
+from app.services.infra_service import get_infra_adjusted_dss
 from app.services.payout_service import initiate_upi_payout
 from app.services.notification_service import notify_claim_approved, notify_claim_rejected, notify_claim_paid
 
@@ -16,11 +17,20 @@ router = APIRouter()
 # City pools — which disruption types are valid per city
 # Delhi/NCR: AQI + Heat pool | Mumbai/Bangalore: Rain pool | All: Civic + Traffic
 CITY_POOLS = {
-    "Delhi":     [DisruptionType.AQI_SPIKE, DisruptionType.EXTREME_HEAT, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
-    "Mumbai":    [DisruptionType.HEAVY_RAIN, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
-    "Bangalore": [DisruptionType.HEAVY_RAIN, DisruptionType.AQI_SPIKE, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
-    "Chennai":   [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
-    "Hyderabad": [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Delhi":          [DisruptionType.AQI_SPIKE, DisruptionType.EXTREME_HEAT, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Mumbai":         [DisruptionType.HEAVY_RAIN, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Bangalore":      [DisruptionType.HEAVY_RAIN, DisruptionType.AQI_SPIKE, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Chennai":        [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
+    "Hyderabad":      [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Coimbatore":     [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Tiruchirappalli":[DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
+    "Madurai":        [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
+    "Salem":          [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
+    "Pune":           [DisruptionType.HEAVY_RAIN, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Kolkata":        [DisruptionType.HEAVY_RAIN, DisruptionType.AQI_SPIKE, DisruptionType.CIVIC_EMERGENCY],
+    "Ahmedabad":      [DisruptionType.EXTREME_HEAT, DisruptionType.AQI_SPIKE, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Lucknow":        [DisruptionType.EXTREME_HEAT, DisruptionType.AQI_SPIKE, DisruptionType.TRAFFIC_DISRUPTION, DisruptionType.CIVIC_EMERGENCY],
+    "Patna":          [DisruptionType.HEAVY_RAIN, DisruptionType.EXTREME_HEAT, DisruptionType.CIVIC_EMERGENCY],
 }
 
 # Active hours: delivery workers operate 6am-10pm IST
@@ -254,9 +264,33 @@ async def trigger_claim(
     effective_cap = min(daily_remaining, weekly_remaining)
 
     effective_hours_ratio = hours_ratio * proximity_factor
+
+    # ── Ward-level infra-adjusted DSS ────────────────────────────────────────
+    # Use worker's actual GPS location if available, else registered pincode
+    gps_city = last_ping.city_detected if last_ping else current_worker.city
+    gps_pincode = last_ping.pincode_detected if last_ping else current_worker.pincode
+    actual_city = gps_city or current_worker.city
+    actual_pincode = gps_pincode or current_worker.pincode
+
+    adjusted_dss, infra_hours_ratio, infra_score = await get_infra_adjusted_dss(
+        base_dss=event.dss_multiplier,
+        city=actual_city,
+        pincode=actual_pincode,
+        disruption_type=event.disruption_type.value,
+        severity=event.severity.value,
+    )
+
+    # Final effective hours ratio:
+    # infra_hours_ratio = how long disruption actually blocks worker in this ward
+    # proximity_factor = how close worker is to epicenter
+    # We take the more conservative (lower) of infra-based and time-of-day based
+    effective_hours_ratio = round(
+        min(hours_ratio, infra_hours_ratio) * proximity_factor, 3
+    )
+
     payout_data = calculate_payout(
         worker_daily_avg=current_worker.avg_daily_earnings,
-        dss_multiplier=event.dss_multiplier,
+        dss_multiplier=adjusted_dss,
         active_hours_ratio=effective_hours_ratio,
         tier=policy.tier,
         existing_claimed_today=claimed_today,
@@ -269,7 +303,7 @@ async def trigger_claim(
         status=ClaimStatus.PENDING,
         claimed_amount=payout_data["raw_payout"],
         worker_daily_avg=current_worker.avg_daily_earnings,
-        dss_multiplier=event.dss_multiplier,
+        dss_multiplier=adjusted_dss,
         active_hours_ratio=effective_hours_ratio,
         fraud_score=fraud_result["fraud_score"],
         fraud_flags=fraud_result["flags_json"],

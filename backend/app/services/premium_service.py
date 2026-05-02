@@ -107,11 +107,25 @@ def get_season_factor() -> float:
     return SEASON_FACTORS.get(datetime.now().month, 1.0)
 
 
+async def get_zone_risk_ai(city: str, pincode: str) -> float:
+    """
+    AI-powered zone risk — uses infra_service to score any city/pincode.
+    Converts infra score (0.3-1.0) to a risk multiplier (0.9-1.5).
+    Better infra = lower multiplier = lower premium.
+    """
+    from app.services.infra_service import get_infra_score
+    infra = await get_infra_score(city, pincode)
+    # Map infra score 0.3→0.9 and 1.0→1.5 linearly
+    risk_multiplier = round(0.9 + (infra - 0.30) * (0.6 / 0.70), 3)
+    return max(0.9, min(1.5, risk_multiplier))
+
+
 def _ml_predict_premium(
     tier: PolicyTier,
     pincode: str,
     worker_history_factor: float,
     platform_activity_score: float,
+    zone_risk: float = 1.0,
 ) -> float | None:
     """Use XGBoost model if available; return None to fall back to rule-based."""
     if _ml_model is None:
@@ -120,38 +134,40 @@ def _ml_predict_premium(
         prefix = int(pincode[:1]) if pincode else 0
         month = datetime.now().month
         tier_idx = _TIER_IDX[tier]
-        tenure_weeks = 0  # unknown at quote time; use 0 (conservative)
-        zone_risk = get_zone_risk(pincode)
+        tenure_weeks = 0
         season = get_season_factor()
-        # Use moderate rain (0) as default disruption context for premium quoting
         features = np.array([[prefix, month, tier_idx, tenure_weeks,
                                platform_activity_score, zone_risk, season,
                                0, 0, 0.3, 0]])
         pred = float(_ml_model.predict(features)[0])
         base = BASE_PREMIUMS[tier]
-        # Clamp to ±40% of base to prevent wild extrapolation
         return round(max(base * 0.6, min(base * 1.6, pred * worker_history_factor)), 2)
     except Exception:
         return None
 
 
-def calculate_premium(
+async def calculate_premium(
     tier: PolicyTier,
     pincode: str,
+    city: str = "",
     worker_history_factor: float = 1.0,
     platform_activity_score: float = 1.0,
 ) -> dict:
     """
     Calculate dynamic weekly premium.
-    Uses XGBoost ML model when available, falls back to rule-based formula.
-    Zone risk uses ward-level (6-digit) pincode when available, else 3-digit prefix.
-    Formula (fallback): Premium = Base × Zone_Risk × Season_Factor × Worker_History × Platform_Activity
+    Uses AI infra scoring for any city/pincode in India.
+    Falls back to XGBoost ML model, then rule-based formula.
     """
     base = BASE_PREMIUMS[tier]
-    zone_risk = get_sub_zone_risk(pincode)  # ward-level if known, else 3-digit zone
     season = get_season_factor()
 
-    ml_premium = _ml_predict_premium(tier, pincode, worker_history_factor, platform_activity_score)
+    # AI-powered zone risk — works for any city in India
+    if city:
+        zone_risk = await get_zone_risk_ai(city, pincode)
+    else:
+        zone_risk = get_sub_zone_risk(pincode)
+
+    ml_premium = _ml_predict_premium(tier, pincode, worker_history_factor, platform_activity_score, zone_risk)
     if ml_premium is not None:
         adjusted = ml_premium
     else:

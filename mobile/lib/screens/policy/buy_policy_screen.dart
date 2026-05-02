@@ -184,8 +184,25 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
                   Border(top: BorderSide(color: AppTheme.divider, width: 0.5)),
             ),
             child: quoteAsync.when(
-              loading: () => const SizedBox(height: 56),
-              error: (_, __) => const SizedBox.shrink(),
+              loading: () => ElevatedButton(
+                onPressed: null,
+                child: const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2)),
+              ),
+              error: (_, __) => ElevatedButton(
+                onPressed: _purchasing ? null : () => _buy(selectedTier),
+                child: _purchasing
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                    : Text(
+                        'Pay ₹${AppConstants.tierBasePrices[selectedTier]?.toStringAsFixed(0) ?? "--"} via Razorpay'),
+              ),
               data: (quote) => ElevatedButton(
                 onPressed: _purchasing ? null : () => _buy(selectedTier),
                 child: _purchasing

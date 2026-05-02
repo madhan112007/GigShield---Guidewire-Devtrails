@@ -174,7 +174,7 @@ TRAFFIC_SCENARIOS = {
 
 
 def is_real_api_key(value: Optional[str]) -> bool:
-    return bool(value and value != "mock_key" and not value.startswith("your_"))
+    return bool(value and not value.startswith("your_"))
 
 
 async def fetch_weather_mock(city: str) -> dict:
@@ -190,7 +190,7 @@ async def fetch_weather_mock(city: str) -> dict:
 
 async def fetch_aqi_real(city: str) -> dict:
     """Real AQI from OpenWeatherMap Air Pollution API."""
-    if settings.OPENWEATHER_API_KEY == "mock_key":
+    if settings.OPENWEATHER_API_KEY == "":
         return await fetch_aqi_mock(city)
     city_coords = {
         "Delhi": (28.6139, 77.2090), "Mumbai": (19.0760, 72.8777),
@@ -212,7 +212,7 @@ async def fetch_aqi_real(city: str) -> dict:
             ow_aqi = data["list"][0]["main"]["aqi"]
             aqi_map = {1: 50, 2: 100, 3: 200, 4: 300, 5: 400}
             return {"aqi": aqi_map.get(ow_aqi, 100), "city": city}
-        except Exception:
+        except (httpx.HTTPError, KeyError, ValueError, TypeError, IndexError):
             return await fetch_aqi_mock(city)
 
 
@@ -264,7 +264,7 @@ async def fetch_civic_real(city: str) -> Optional[tuple]:
 
             description = articles[0].get("title", "Civic disruption detected")[:120]
             return severity, description, civic_type
-    except Exception as e:
+    except (httpx.HTTPError, KeyError, ValueError, TypeError, IndexError) as e:
         print("[NewsAPI ERROR] " + str(e))
         return await fetch_civic_twitter_dev_fallback(city)
 
@@ -303,7 +303,7 @@ async def fetch_civic_twitter_dev_fallback(city: str) -> Optional[tuple]:
     except tweepy.TweepyException as e:
         print("[Twitter API FALLBACK ERROR] " + str(e))
         return fetch_civic_mock(city)
-    except Exception as e:
+    except (AttributeError, ValueError) as e:
         print("[Twitter API FALLBACK ERROR] Unexpected error: " + str(e))
         return fetch_civic_mock(city)
 
@@ -317,7 +317,7 @@ def fetch_traffic_mock(city: str) -> Optional[tuple]:
 
 
 async def fetch_weather_real(city: str) -> dict:
-    if settings.OPENWEATHER_API_KEY == "mock_key":
+    if settings.OPENWEATHER_API_KEY == "":
         return await fetch_weather_mock(city)
     async with httpx.AsyncClient() as client:
         try:
@@ -334,7 +334,7 @@ async def fetch_weather_real(city: str) -> dict:
                 "temperature_c": data["main"]["temp"],
                 "description": data["weather"][0]["description"],
             }
-        except Exception:
+        except (httpx.HTTPError, KeyError, ValueError, TypeError, IndexError):
             return await fetch_weather_mock(city)
 
 

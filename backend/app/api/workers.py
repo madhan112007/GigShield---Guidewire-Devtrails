@@ -119,10 +119,16 @@ async def get_dashboard(
     )
     recent_claims = result.scalars().all()
 
-    # Total earned protection (sum of approved payouts)
-    total_protection = sum(
-        c.approved_amount or 0 for c in recent_claims if c.approved_amount
+    # Total earned protection (sum of all approved/paid payouts, not just last 5)
+    from sqlalchemy import func
+    from app.models.models import ClaimStatus
+    total_result = await db.execute(
+        select(func.coalesce(func.sum(Claim.approved_amount), 0.0)).where(
+            Claim.worker_id == current_worker.id,
+            Claim.status.in_([ClaimStatus.APPROVED, ClaimStatus.PAID]),
+        )
     )
+    total_protection = float(total_result.scalar() or 0)
 
     # Active disruptions in worker's city
     result = await db.execute(

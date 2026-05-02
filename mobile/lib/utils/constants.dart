@@ -6,6 +6,9 @@ class AppConstants {
   static const bool allowInsecureHttp =
       bool.fromEnvironment('ALLOW_INSECURE_HTTP', defaultValue: true);
 
+  static const Duration connectTimeout = Duration(seconds: 10);
+  static const Duration receiveTimeout = Duration(seconds: 30);
+
   static const String accessTokenKey = 'access_token';
   static const String refreshTokenKey = 'refresh_token';
   static const String workerIdKey = 'worker_id';
@@ -49,14 +52,21 @@ class AppConstants {
     'extreme': 0xFF991B1B,
   };
 
+  // All major Indian cities and districts — covers metros, tier-2, tier-3
   static const List<String> supportedCities = [
-    'Bangalore',
-    'Mumbai',
-    'Delhi',
-    'Chennai',
-    'Hyderabad',
-    'Pune',
-    'Kolkata',
+    'Agartala','Agra','Ahmedabad','Aizawl','Ajmer','Akola','Aligarh','Allahabad',
+    'Amravati','Amritsar','Anantapur','Asansol','Aurangabad','Bangalore','Bareilly',
+    'Belgaum','Bhavnagar','Bhilai','Bhopal','Bhubaneswar','Bikaner','Bilaspur',
+    'Chandigarh','Chennai','Coimbatore','Cuttack','Dehradun','Delhi','Dhanbad',
+    'Durgapur','Erode','Faridabad','Ghaziabad','Gorakhpur','Gulbarga','Guntur',
+    'Gurgaon','Guwahati','Gwalior','Hubli','Hyderabad','Imphal','Indore','Itanagar',
+    'Jabalpur','Jaipur','Jalandhar','Jammu','Jamnagar','Jamshedpur','Jodhpur',
+    'Kakinada','Kalyan','Kanpur','Kochi','Kohima','Kolhapur','Kolkata','Kota',
+    'Kozhikode','Lucknow','Ludhiana','Madurai','Mangalore','Meerut','Mumbai',
+    'Mysore','Nagpur','Nashik','Navi Mumbai','Noida','Patna','Pondicherry','Pune',
+    'Raipur','Rajkot','Ranchi','Salem','Shillong','Shimla','Siliguri','Solapur',
+    'Srinagar','Surat','Thane','Thiruvananthapuram','Tiruchirappalli','Tiruppur',
+    'Udaipur','Vadodara','Varanasi','Vijayawada','Visakhapatnam','Warangal',
   ];
 
   static const List<Map<String, String>> platforms = [

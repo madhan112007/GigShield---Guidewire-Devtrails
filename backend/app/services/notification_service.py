@@ -48,7 +48,7 @@ def _get_access_token() -> Optional[str]:
         )
         creds.refresh(google.auth.transport.requests.Request())
         return creds.token
-    except Exception as e:
+    except (ImportError, OSError, ValueError) as e:
         print(f"[FCM] Service account auth failed: {e}")
         return None
 
@@ -77,7 +77,7 @@ async def _send_fcm(fcm_token: str, title: str, body: str, data: dict) -> bool:
                 timeout=8.0,
             )
             return r.status_code == 200
-    except Exception as e:
+    except (httpx.HTTPError, ValueError) as e:
         print(f"[FCM ERROR] {e}")
         return False
 
