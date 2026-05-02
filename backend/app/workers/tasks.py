@@ -10,32 +10,56 @@ import json
 from datetime import datetime, timezone, timedelta
 from app.workers.celery_app import celery_app
 
-# Lazily populated at first poll via PositionStack geocoding — zero hardcoding.
-_supported_cities_cache: list[tuple[str, str]] | None = None
-
-
-async def _get_supported_cities() -> list[tuple[str, str]]:
+async def _get_cities_to_poll() -> list[tuple[str, str]]:
     """
-    Resolves every city in CITY_ECONOMICS to its pincode via PositionStack.
-    Result is cached in-process so geocoding only runs once per worker boot.
-    Any city added to CITY_ECONOMICS is automatically included.
+    Dynamically builds the city poll list from the DB — covers every city
+    where at least one active worker exists, anywhere in India.
+
+    Resolution order per city:
+      1. Worker's own registered pincode (already in DB — no API call needed)
+      2. PositionStack geocoding (if pincode looks incomplete)
+      3. Hardcoded fallback in geocoding_service._FALLBACK_PINCODES
+
+    This means a worker in a village in Rajasthan or a tier-4 town is
+    automatically included the moment they register — no code change needed.
     """
-    global _supported_cities_cache
-    if _supported_cities_cache is not None:
-        return _supported_cities_cache
+    from app.database import AsyncSessionLocal
+    from sqlalchemy import select, func
+    from app.models.models import Worker, Policy, PolicyStatus
+    from app.services.geocoding_service import resolve_city
 
-    from app.services.platform_service import CITY_ECONOMICS
-    from app.services.geocoding_service import resolve_all_cities
+    async with AsyncSessionLocal() as db:
+        # Distinct (city, pincode) pairs from workers who have an active policy
+        rows = await db.execute(
+            select(Worker.city, Worker.pincode)
+            .join(Policy, Policy.worker_id == Worker.id)
+            .where(
+                Worker.is_active == True,
+                Policy.status == PolicyStatus.ACTIVE,
+            )
+            .distinct()
+        )
+        worker_locations = rows.all()
 
-    city_names = list(CITY_ECONOMICS.keys())
-    resolved = await resolve_all_cities(city_names)
-    _supported_cities_cache = [
-        (city, pincode)
-        for city, (pincode, _lat, _lng) in resolved.items()
-        if pincode != "000000"
-    ]
-    print(f"[Tasks] Resolved {len(_supported_cities_cache)}/{len(city_names)} cities via PositionStack")
-    return _supported_cities_cache
+    # Deduplicate by city (use first pincode seen per city)
+    city_map: dict[str, str] = {}
+    for city, pincode in worker_locations:
+        if not city:
+            continue
+        city_key = city.strip().lower()
+        if city_key not in city_map:
+            # Use worker's own pincode if it looks valid (6 digits)
+            if pincode and len(pincode.strip()) == 6 and pincode.strip().isdigit():
+                city_map[city_key] = (city.strip(), pincode.strip())
+            else:
+                # Geocode to get a valid pincode
+                resolved_pincode, _, _ = await resolve_city(city.strip())
+                if resolved_pincode != "000000":
+                    city_map[city_key] = (city.strip(), resolved_pincode)
+
+    result = list(city_map.values())
+    print(f"[Tasks] Polling {len(result)} cities derived from active workers in DB")
+    return result
 
 
 def _run(coro):
@@ -254,17 +278,17 @@ async def _auto_claim_for_event(event_id: str, city: str, db):
 
 async def _do_poll_weather():
     from app.database import AsyncSessionLocal
-    supported = await _get_supported_cities()
+    cities = await _get_cities_to_poll()
     async with AsyncSessionLocal() as db:
         total_events = 0
         total_claims = 0
-        for city, pincode in supported:
+        for city, pincode in cities:
             event_ids = await _poll_and_store_disruptions(city, pincode, db)
             for eid in event_ids:
                 n = await _auto_claim_for_event(eid, city, db)
                 total_claims += n
             total_events += len(event_ids)
-        return {"cities": len(supported), "new_events": total_events, "auto_claims": total_claims}
+        return {"cities": len(cities), "new_events": total_events, "auto_claims": total_claims}
 
 
 async def _do_poll_aqi():
@@ -274,11 +298,11 @@ async def _do_poll_aqi():
     from app.models.models import DisruptionEvent, DisruptionType
     from sqlalchemy import select
 
-    supported = await _get_supported_cities()
+    cities = await _get_cities_to_poll()
     async with AsyncSessionLocal() as db:
         total_events = 0
         total_claims = 0
-        for city, pincode in supported:
+        for city, pincode in cities:
             aqi_data = await fetch_aqi_mock(city)
             aqi_result = classify_aqi(aqi_data.get("aqi", 0))
             if not aqi_result:
@@ -653,7 +677,7 @@ def process_auto_claims(disruption_event_id: str, city: str):
     import re
     if not re.fullmatch(r"[0-9a-f\-]{36}", disruption_event_id or ""):
         return {"error": "Invalid disruption_event_id"}
-    valid_cities = {c for c, _ in (_run(_get_supported_cities()))}
+    valid_cities = {c for c, _ in (_run(_get_cities_to_poll()))}
     if city not in valid_cities:
         return {"error": "Invalid city"}
 
