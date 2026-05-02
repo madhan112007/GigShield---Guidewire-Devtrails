@@ -14,9 +14,11 @@ class Settings(BaseSettings):
     OPENWEATHER_API_KEY: str = "mock_key"
     AQI_API_KEY: str = "mock_key"
     GOOGLE_MAPS_API_KEY: str = "mock_key"
-    RAZORPAY_KEY_ID: str = "rzp_test_mock"
+    RAZORPAY_KEY_ID: str = "rzp_test_mock"        # test key (dev mode)
     RAZORPAY_KEY_SECRET: str = "mock_secret"
     RAZORPAY_ACCOUNT_NUMBER: str = "mock_account"
+    RAZORPAY_LIVE_KEY_ID: str = ""                 # live key (production)
+    RAZORPAY_LIVE_KEY_SECRET: str = ""
     FCM_SERVICE_ACCOUNT_PATH: str = "mock_key"
     FCM_PROJECT_ID: str = "mock_key"
     ENVIRONMENT: str = "development"

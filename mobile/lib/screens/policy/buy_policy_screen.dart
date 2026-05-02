@@ -54,17 +54,34 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
       final order = await ref.read(apiServiceProvider).createPolicyOrder(tier);
       _pendingOrder = {'order': order, 'tier': tier};
 
+      // Prefetch worker phone for GPay auto-select
+      final workerData = await ref.read(apiServiceProvider).getMe();
+      final phone = (workerData['phone'] as String? ?? '').replaceAll('+91', '');
+      final isLive = (order['key_id'] as String? ?? '').startsWith('rzp_live_');
+
       _razorpay.open({
         'key': order['key_id'],
         'order_id': order['order_id'],
         'amount': order['amount'],
         'currency': 'INR',
         'name': 'Susanoo',
-        'description':
-            '${AppConstants.tierLabels[tier] ?? tier} — Weekly Policy',
-        'prefill': {'contact': '', 'email': 'worker@susanoo.in'},
+        'description': '${AppConstants.tierLabels[tier] ?? tier} — Weekly Policy',
+        'prefill': {
+          'contact': phone,
+          'email': 'worker@susanoo.in',
+          'method': 'upi',   // opens UPI tab by default — shows GPay, PhonePe etc.
+        },
         'theme': {'color': '#1A56DB'},
         'modal': {'confirm_close': true},
+        if (isLive) 'config': {
+          'display': {
+            'blocks': {
+              'utib': {'name': 'Pay via UPI', 'instruments': [{'method': 'upi'}]}
+            },
+            'sequence': ['block.utib'],
+            'preferences': {'show_default_blocks': true},
+          }
+        },
       });
     } catch (e) {
       if (mounted) {
@@ -211,8 +228,16 @@ class _BuyPolicyScreenState extends ConsumerState<BuyPolicyScreen> {
                         width: 20,
                         child: CircularProgressIndicator(
                             color: Colors.white, strokeWidth: 2))
-                    : Text(
-                        'Pay ₹${(quote['adjusted_premium'] as num).toStringAsFixed(0)} via Razorpay'),
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.payment_rounded, size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Pay ₹${(quote['adjusted_premium'] as num).toStringAsFixed(0)} · UPI / GPay / Card',
+                          ),
+                        ],
+                      ),
               ),
             ),
           ),

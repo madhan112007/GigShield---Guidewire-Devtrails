@@ -16,11 +16,24 @@ router = APIRouter()
 
 
 def _razorpay_client():
-    return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+    key_id, key_secret = _active_keys()
+    return razorpay.Client(auth=(key_id, key_secret))
+
+
+def _active_keys() -> tuple[str, str]:
+    """Returns (key_id, key_secret) — live keys in production, test keys in dev."""
+    if (
+        settings.ENVIRONMENT == "production"
+        and settings.RAZORPAY_LIVE_KEY_ID.startswith("rzp_live_")
+        and settings.RAZORPAY_LIVE_KEY_SECRET
+    ):
+        return settings.RAZORPAY_LIVE_KEY_ID, settings.RAZORPAY_LIVE_KEY_SECRET
+    return settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET
 
 
 def _is_mock():
-    return settings.RAZORPAY_KEY_ID == "rzp_test_mock"
+    key_id, _ = _active_keys()
+    return key_id == "rzp_test_mock"
 
 
 @router.post("/create-order", response_model=PolicyOrderResponse)
@@ -31,16 +44,16 @@ async def create_order(
     pincode = payload.pincode or current_worker.pincode
     premium_data = await calculate_premium(tier=payload.tier, pincode=pincode, city=current_worker.city)
     amount_paise = int(premium_data["adjusted_premium"] * 100)
+    key_id, _ = _active_keys()
 
     if _is_mock():
-        # Return a fake order so the Flutter SDK still opens (test mode only)
         return PolicyOrderResponse(
             order_id=f"order_mock_{payload.tier.value}",
             amount=amount_paise,
             currency="INR",
             tier=payload.tier.value,
             adjusted_premium=premium_data["adjusted_premium"],
-            key_id=settings.RAZORPAY_KEY_ID,
+            key_id=key_id,
         )
 
     client = _razorpay_client()
@@ -48,10 +61,7 @@ async def create_order(
         "amount": amount_paise,
         "currency": "INR",
         "payment_capture": 1,
-        "notes": {
-            "worker_id": current_worker.id,
-            "tier": payload.tier.value,
-        }
+        "notes": {"worker_id": current_worker.id, "tier": payload.tier.value},
     })
 
     return PolicyOrderResponse(
@@ -60,7 +70,7 @@ async def create_order(
         currency="INR",
         tier=payload.tier.value,
         adjusted_premium=premium_data["adjusted_premium"],
-        key_id=settings.RAZORPAY_KEY_ID,
+        key_id=key_id,
     )
 
 
@@ -70,10 +80,11 @@ async def verify_payment(
     db: AsyncSession = Depends(get_db),
     current_worker: Worker = Depends(get_current_worker),
 ):
-    # Verify Razorpay signature
+    # Verify Razorpay signature using the active secret (live or test)
+    _, key_secret = _active_keys()
     body = f"{payload.razorpay_order_id}|{payload.razorpay_payment_id}"
     expected = hmac.new(
-        settings.RAZORPAY_KEY_SECRET.encode(),
+        key_secret.encode(),
         body.encode(),
         hashlib.sha256,
     ).hexdigest()
