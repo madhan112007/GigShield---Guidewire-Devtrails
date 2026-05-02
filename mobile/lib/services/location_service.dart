@@ -35,8 +35,11 @@ class LocationService {
           permission == LocationPermission.deniedForever) return;
 
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium,
-        timeLimit: const Duration(seconds: 10),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.low, // "Balanced" — no GPS chip, uses network/WiFi
+          distanceFilter: 500,            // skip ping if worker hasn't moved 500m
+          timeLimit: Duration(seconds: 15),
+        ),
       );
       await api.sendLocationPing(pos.latitude, pos.longitude, pos.accuracy);
     } catch (_) {

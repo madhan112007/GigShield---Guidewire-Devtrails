@@ -23,8 +23,65 @@ import asyncio
 from typing import Optional
 
 
+# Cost of Living index AND subsistence ratio per city
+# col_index: relative cost of living (1.0 = Tier-2 base)
+# subsistence_ratio: minimum daily spend / typical daily earnings
+#   Higher ratio = more of income goes to survival = disruption hurts more relatively
+CITY_ECONOMICS = {
+    # city: (col_index, subsistence_ratio)
+    "Mumbai":          (1.45, 0.58),
+    "Delhi":           (1.35, 0.52),
+    "Bangalore":       (1.30, 0.53),
+    "Chennai":         (1.20, 0.50),
+    "Hyderabad":       (1.15, 0.48),
+    "Pune":            (1.15, 0.48),
+    "Kolkata":         (1.10, 0.50),
+    "Noida":           (1.25, 0.51),
+    "Gurgaon":         (1.30, 0.52),
+    "Ahmedabad":       (1.05, 0.44),
+    "Surat":           (1.05, 0.43),
+    "Jaipur":          (1.00, 0.42),
+    "Lucknow":         (0.95, 0.42),
+    "Indore":          (0.95, 0.41),
+    "Bhopal":          (0.90, 0.40),
+    "Nagpur":          (0.95, 0.41),
+    "Coimbatore":      (1.00, 0.40),
+    "Madurai":         (0.90, 0.38),
+    "Tiruchirappalli": (0.88, 0.38),
+    "Kochi":           (1.05, 0.45),
+    "Chandigarh":      (1.10, 0.46),
+    "Visakhapatnam":   (0.95, 0.41),
+    "Vadodara":        (0.95, 0.41),
+    "Amritsar":        (0.90, 0.40),
+    "Ludhiana":        (0.92, 0.40),
+    "Patna":           (0.75, 0.36),
+    "Guwahati":        (0.80, 0.37),
+    "Ranchi":          (0.78, 0.36),
+    "Varanasi":        (0.80, 0.37),
+    "Agra":            (0.82, 0.38),
+    "Meerut":          (0.85, 0.38),
+    "Gorakhpur":       (0.75, 0.35),
+    "Siliguri":        (0.80, 0.37),
+}
+
+DEFAULT_COL = 1.0
+DEFAULT_SUBSISTENCE = 0.42
+
+
+def get_city_economics(city: str) -> tuple[float, float]:
+    """Returns (col_index, subsistence_ratio) for a city."""
+    for known, vals in CITY_ECONOMICS.items():
+        if known.lower() in city.lower() or city.lower() in known.lower():
+            return vals
+    return DEFAULT_COL, DEFAULT_SUBSISTENCE
+
+
+def get_col_index(city: str) -> float:
+    return get_city_economics(city)[0]
+
+
 # Realistic daily earnings ranges per platform (min, max) in ₹
-# Based on publicly reported gig worker earnings in India (2024-25)
+# Based on Tier-2 city average — multiplied by CoL index at runtime
 PLATFORM_EARNINGS = {
     "blinkit": {
         "range": (850, 1200),   # 10-min delivery, high order density
@@ -61,37 +118,37 @@ PLATFORM_EARNINGS = {
 DEFAULT_EARNINGS = 700.0
 
 
-async def fetch_platform_earnings(phone: str, platform: str) -> dict:
+async def fetch_platform_earnings(phone: str, platform: str, city: str = "") -> dict:
     """
-    Mock platform API call — returns avg daily earnings for a worker
-    identified by their registered phone number.
-
-    In Phase 2 this becomes a real HTTP call to the platform partner API.
-    The phone number is the key used by all platforms to identify their
-    delivery partners (same number used for OTP login on their apps).
+    Mock platform API call — returns avg daily earnings for a worker.
+    Earnings are adjusted by city Cost of Living index.
+    Mumbai Blinkit rider earns ~45% more than Jaipur Blinkit rider.
     """
-    # Simulate network latency of a real API call
     await asyncio.sleep(0.3)
 
     config = PLATFORM_EARNINGS.get(platform)
+    col = get_col_index(city) if city else DEFAULT_COL
+
     if not config:
+        base = round(DEFAULT_EARNINGS * col, 2)
         return {
             "platform": platform,
             "phone": phone,
-            "avg_daily_earnings": DEFAULT_EARNINGS,
-            "weekly_settlement": round(DEFAULT_EARNINGS * 6, 2),
+            "city": city,
+            "avg_daily_earnings": base,
+            "weekly_settlement": round(base * 6, 2),
             "active_days_last_week": 6,
+            "col_index": col,
             "source": "default",
             "verified": False,
         }
 
-    # Seed random with phone + platform so the same worker always gets
-    # the same earnings (deterministic mock — consistent across restarts)
     seed = int("".join(filter(str.isdigit, phone))[-6:] or "123456")
     rng = random.Random(seed + hash(platform) % 10000)
 
     low, high = config["range"]
-    avg_daily = round(rng.uniform(low, high), 2)
+    # Apply CoL multiplier to earnings range
+    avg_daily = round(rng.uniform(low, high) * col, 2)
 
     day_low, day_high = config["active_days"]
     active_days_week = rng.randint(day_low, day_high)
@@ -102,10 +159,12 @@ async def fetch_platform_earnings(phone: str, platform: str) -> dict:
         "platform": platform,
         "platform_label": config["label"],
         "phone": phone,
+        "city": city,
         "avg_daily_earnings": avg_daily,
         "weekly_settlement": weekly_settlement,
         "active_days_last_week": active_days_week,
         "active_days_30": active_days_30,
+        "col_index": col,
         "source": f"{config['label']} Partner API (mock)",
         "verified": True,
     }

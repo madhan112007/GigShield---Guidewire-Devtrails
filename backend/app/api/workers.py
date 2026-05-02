@@ -29,6 +29,7 @@ async def register_worker(
     earnings_data = await fetch_platform_earnings(
         phone=current_worker.phone,
         platform=payload.platform.value,
+        city=payload.city,
     )
     current_worker.avg_daily_earnings = earnings_data["avg_daily_earnings"]
     current_worker.active_days_30 = earnings_data.get("active_days_30", 0)

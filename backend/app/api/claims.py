@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.models import Worker, Policy, Claim, DisruptionEvent, Payout, PolicyStatus, ClaimStatus, PayoutStatus, DisruptionType
 from app.schemas.schemas import ClaimResponse
 from app.services.auth_service import get_current_worker
-from app.services.premium_service import calculate_payout, MAX_DAILY_PAYOUT, MAX_WEEKLY_PAYOUT
+from app.services.premium_service import calculate_payout, MAX_DAILY_PAYOUT, MAX_WEEKLY_PAYOUT, get_dynamic_caps
 from app.services.fraud_service import calculate_fraud_score
 from app.services.infra_service import get_infra_adjusted_dss
 from app.services.payout_service import initiate_upi_payout
@@ -241,8 +241,9 @@ async def trigger_claim(
         zone_total_workers=zone_total_workers,
     )
 
-    # Cap management
-    weekly_cap = MAX_WEEKLY_PAYOUT[policy.tier]
+    # Dynamic caps based on city Cost of Living
+    daily_cap, weekly_cap_dynamic = get_dynamic_caps(policy.tier, current_worker.city)
+    weekly_cap = weekly_cap_dynamic
     weekly_claimed = float(policy.total_claimed or 0)
     weekly_remaining = max(0.0, weekly_cap - weekly_claimed)
 
@@ -259,25 +260,31 @@ async def trigger_claim(
     )
     claimed_today = float(today_result.scalar() or 0)
 
-    daily_cap = MAX_DAILY_PAYOUT[policy.tier]
     daily_remaining = max(0.0, daily_cap - claimed_today)
     effective_cap = min(daily_remaining, weekly_remaining)
 
     effective_hours_ratio = hours_ratio * proximity_factor
 
     # ── Ward-level infra-adjusted DSS ────────────────────────────────────────
-    # Use worker's actual GPS location if available, else registered pincode
-    gps_city = last_ping.city_detected if last_ping else current_worker.city
-    gps_pincode = last_ping.pincode_detected if last_ping else current_worker.pincode
-    actual_city = gps_city or current_worker.city
-    actual_pincode = gps_pincode or current_worker.pincode
+    # Use worker's activity zone (last 30 days of GPS pings) — weighted
+    # average of all wards they regularly work in. More accurate and
+    # fraud-resistant than a single real-time ping.
+    from app.services.infra_service import get_activity_zone_infra_score
+    activity_infra = await get_activity_zone_infra_score(
+        worker_id=current_worker.id,
+        db=db,
+        fallback_city=current_worker.city,
+        fallback_pincode=current_worker.pincode,
+        days=30,
+    )
 
     adjusted_dss, infra_hours_ratio, infra_score = await get_infra_adjusted_dss(
         base_dss=event.dss_multiplier,
-        city=actual_city,
-        pincode=actual_pincode,
+        city=current_worker.city,
+        pincode=current_worker.pincode,
         disruption_type=event.disruption_type.value,
         severity=event.severity.value,
+        activity_zone_infra=activity_infra,
     )
 
     # Final effective hours ratio:

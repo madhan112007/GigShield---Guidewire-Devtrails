@@ -98,7 +98,20 @@ SEASON_FACTORS = {
 }
 
 
-def get_zone_risk(pincode: str) -> float:
+def get_dynamic_caps(tier: PolicyTier, city: str) -> tuple[float, float]:
+    """
+    Dynamic daily/weekly payout caps adjusted by city Cost of Living.
+    Mumbai worker can claim more in absolute terms than Patna worker
+    because their actual income loss is higher.
+    Returns (daily_cap, weekly_cap).
+    """
+    from app.services.platform_service import get_col_index
+    col = get_col_index(city)
+    daily_cap = round(MAX_DAILY_PAYOUT[tier] * col, 0)
+    weekly_cap = round(MAX_WEEKLY_PAYOUT[tier] * col, 0)
+    return daily_cap, weekly_cap
+
+
     prefix = pincode[:3] if len(pincode) >= 3 else "000"
     return ZONE_RISK.get(prefix, 1.0)
 
@@ -199,26 +212,37 @@ def calculate_payout(
     active_hours_ratio: float,
     tier: PolicyTier,
     existing_claimed_today: float = 0.0,
+    city: str = "",
+    use_subsistence_adjustment: bool = False,
 ) -> dict:
     """
-    Payout = income the worker LOST due to the disruption.
+    Payout = actual income loss, optionally adjusted for cost of living.
 
-    Formula:
-    - Expected earnings for the day  = worker_daily_avg
-    - Income shortfall (= payout)    = worker_daily_avg × DSS × active_hours_ratio
-    
-    Example: 
-    If daily avg = ₹1000, DSS = 0.5 (50% disruption), and ratio = 0.4 (40% of day remaining),
-    Shortfall = 1000 * 0.5 * 0.4 = ₹200.
+    use_subsistence_adjustment=False (default):
+      Fixed payout — worker receives full raw_loss regardless of savings habits.
+      Preferred for standard insurance products.
 
-    Capped at (tier daily cap - already claimed today) to prevent over-compensation.
+    use_subsistence_adjustment=True:
+      Net-loss payout — effective_loss = raw_loss × (1 - subsistence_ratio × 0.5)
+      Reflects real hardship: Mumbai rider (ratio=0.58) vs Coimbatore rider (ratio=0.40).
+
+    Capped at CoL-adjusted daily cap.
     """
-    income_shortfall  = round(worker_daily_avg * dss_multiplier * active_hours_ratio, 2)
-    estimated_actual  = round(worker_daily_avg * (1 - (dss_multiplier * active_hours_ratio)), 2)
+    from app.services.platform_service import get_city_economics
+    col_index, subsistence_ratio = get_city_economics(city) if city else (1.0, DEFAULT_SUBSISTENCE)
 
-    daily_cap         = MAX_DAILY_PAYOUT[tier]
-    remaining_cap     = max(0.0, daily_cap - existing_claimed_today)
-    approved_amount   = round(min(income_shortfall, remaining_cap), 2)
+    raw_loss = round(worker_daily_avg * dss_multiplier * active_hours_ratio, 2)
+    if use_subsistence_adjustment:
+        effective_loss = round(raw_loss * (1 - subsistence_ratio * 0.5), 2)
+    else:
+        effective_loss = raw_loss
+
+    # Dynamic cap based on CoL
+    daily_cap = round(MAX_DAILY_PAYOUT[tier] * col_index, 2)
+    remaining_cap = max(0.0, daily_cap - existing_claimed_today)
+    approved_amount = round(min(effective_loss, remaining_cap), 2)
+
+    estimated_actual = round(worker_daily_avg * (1 - dss_multiplier * active_hours_ratio), 2)
 
     return {
         "worker_daily_avg":   worker_daily_avg,
@@ -226,10 +250,13 @@ def calculate_payout(
         "active_hours_ratio": active_hours_ratio,
         "expected_earnings":  worker_daily_avg,
         "estimated_actual":   estimated_actual,
-        "income_shortfall":   income_shortfall,
-        "raw_payout":         income_shortfall,
+        "income_shortfall":   raw_loss,
+        "subsistence_ratio":  subsistence_ratio,
+        "effective_loss":     effective_loss,
+        "raw_payout":         effective_loss,
         "tier_cap":           daily_cap,
         "remaining_cap":      remaining_cap,
         "approved_amount":    approved_amount,
-        "capped":             income_shortfall > remaining_cap,
+        "capped":             effective_loss > remaining_cap,
+        "col_index":          col_index,
     }

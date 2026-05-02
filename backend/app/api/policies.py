@@ -89,13 +89,42 @@ async def get_quote(
     tier: PolicyTier = PolicyTier.SMART,
     current_worker: Worker = Depends(get_current_worker),
 ):
-    result = await calculate_premium(
-        tier=tier,
-        pincode=current_worker.pincode,
-        city=current_worker.city,
-        worker_history_factor=1.0,
-        platform_activity_score=1.0,
-    )
+    import asyncio
+    try:
+        result = await asyncio.wait_for(
+            calculate_premium(
+                tier=tier,
+                pincode=current_worker.pincode,
+                city=current_worker.city,
+                worker_history_factor=1.0,
+                platform_activity_score=1.0,
+            ),
+            timeout=5.0,
+        )
+    except asyncio.TimeoutError:
+        # Gemini timed out — return rule-based fallback immediately
+        from app.services.premium_service import get_season_factor, get_sub_zone_risk, MAX_DAILY_PAYOUT, MAX_WEEKLY_PAYOUT
+        base = BASE_PREMIUMS[tier]
+        zone_risk = get_sub_zone_risk(current_worker.pincode)
+        season = get_season_factor()
+        adjusted = round(base * zone_risk * season, 2)
+        result = {
+            "tier": tier,
+            "base_premium": base,
+            "adjusted_premium": adjusted,
+            "zone_risk_multiplier": zone_risk,
+            "season_factor": season,
+            "worker_history_factor": 1.0,
+            "platform_activity_score": 1.0,
+            "max_daily_payout": MAX_DAILY_PAYOUT[tier],
+            "max_weekly_payout": MAX_WEEKLY_PAYOUT[tier],
+            "risk_breakdown": {
+                "base": base,
+                "after_zone": round(base * zone_risk, 2),
+                "after_season": round(base * zone_risk * season, 2),
+                "final": adjusted,
+            },
+        }
     return PremiumQuote(**result)
 
 
