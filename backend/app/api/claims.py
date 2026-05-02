@@ -272,14 +272,29 @@ async def trigger_claim(
     actual_city = gps_city or current_worker.city
     actual_pincode = gps_pincode or current_worker.pincode
 
-    adjusted_dss, infra_score = await get_infra_adjusted_dss(
+    adjusted_dss, infra_hours_ratio, infra_score = await get_infra_adjusted_dss(
         base_dss=event.dss_multiplier,
         city=actual_city,
         pincode=actual_pincode,
         disruption_type=event.disruption_type.value,
+        severity=event.severity.value,
+    )
+
+    # Final effective hours ratio:
+    # infra_hours_ratio = how long disruption actually blocks worker in this ward
+    # proximity_factor = how close worker is to epicenter
+    # We take the more conservative (lower) of infra-based and time-of-day based
+    effective_hours_ratio = round(
+        min(hours_ratio, infra_hours_ratio) * proximity_factor, 3
     )
 
     payout_data = calculate_payout(
+        worker_daily_avg=current_worker.avg_daily_earnings,
+        dss_multiplier=adjusted_dss,
+        active_hours_ratio=effective_hours_ratio,
+        tier=policy.tier,
+        existing_claimed_today=claimed_today,
+    )
         worker_daily_avg=current_worker.avg_daily_earnings,
         dss_multiplier=adjusted_dss,
         active_hours_ratio=effective_hours_ratio,

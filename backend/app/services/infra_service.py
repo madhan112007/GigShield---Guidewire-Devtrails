@@ -12,7 +12,74 @@ from app.config import settings
 _GEMINI_API_KEY = settings.GEMINI_API_KEY
 _GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
-# In-memory cache — avoids repeated API calls for same pincode
+# Base disruption durations in hours by type and severity
+# How long a disruption typically blocks a delivery worker
+_BASE_DURATION_HOURS = {
+    "heavy_rain": {"moderate": 1.5, "severe": 3.0, "extreme": 6.0},
+    "extreme_heat": {"moderate": 4.0, "severe": 6.0, "extreme": 10.0},
+    "aqi_spike": {"moderate": 4.0, "severe": 8.0, "extreme": 12.0},
+    "traffic_disruption": {"moderate": 1.0, "severe": 2.5, "extreme": 5.0},
+    "civic_emergency": {"moderate": 4.0, "severe": 8.0, "extreme": 16.0},
+}
+
+TOTAL_ACTIVE_HOURS = 16.0  # 6am to 10pm
+
+
+async def get_infra_adjusted_dss(
+    base_dss: float,
+    city: str,
+    pincode: str,
+    disruption_type: str = "heavy_rain",
+    severity: str = "severe",
+) -> tuple[float, float, float]:
+    """
+    Adjust both DSS and effective hours ratio based on ward-level infrastructure.
+    Returns (adjusted_dss, adjusted_hours_ratio, infra_score).
+
+    Poor infra (bad drainage) = disruption lasts longer + income loss is higher.
+    Good infra (good drainage) = disruption clears faster + lower income loss.
+
+    Examples:
+    - Heavy rain severe in Dharavi (infra=0.92):
+        base_duration=3hrs → actual=4.8hrs → hours_ratio=0.30
+        base_dss=0.60 → adjusted=0.82
+    - Heavy rain severe in Gurgaon (infra=0.42):
+        base_duration=3hrs → actual=1.8hrs → hours_ratio=0.11
+        base_dss=0.60 → adjusted=0.58
+
+    Heat, AQI, civic emergencies: infra affects duration but not DSS severity.
+    Rain, traffic: infra affects both duration and DSS.
+    """
+    # Heat, AQI, civic: infra doesn't change severity, only duration
+    infra_affects_dss = disruption_type in ("heavy_rain", "traffic_disruption")
+
+    try:
+        infra = await get_infra_score(city, pincode)
+    except Exception:
+        infra = 0.65  # neutral fallback
+
+    # Duration factor: poor infra = longer disruption
+    # infra 0.30 → factor 0.70 (clears fast)
+    # infra 1.00 → factor 1.60 (stays long)
+    duration_factor = round(0.70 + (infra - 0.30) * (0.90 / 0.70), 3)
+    duration_factor = max(0.70, min(1.60, duration_factor))
+
+    base_duration = _BASE_DURATION_HOURS.get(
+        disruption_type, {}
+    ).get(severity, 3.0)
+
+    actual_duration = min(base_duration * duration_factor, TOTAL_ACTIVE_HOURS)
+    adjusted_hours_ratio = round(actual_duration / TOTAL_ACTIVE_HOURS, 3)
+
+    # DSS amplifier: only for rain and traffic
+    if infra_affects_dss:
+        dss_amplifier = round(0.85 + (infra - 0.30) * (0.55 / 0.70), 3)
+        dss_amplifier = max(0.85, min(1.40, dss_amplifier))
+        adjusted_dss = round(min(base_dss * dss_amplifier, 1.0), 3)
+    else:
+        adjusted_dss = base_dss
+
+    return adjusted_dss, adjusted_hours_ratio, infra
 _cache: dict[str, float] = {}
 
 # Known infra scores for major cities (used as fallback + cache seed)
