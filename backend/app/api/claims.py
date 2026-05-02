@@ -295,12 +295,6 @@ async def trigger_claim(
         tier=policy.tier,
         existing_claimed_today=claimed_today,
     )
-        worker_daily_avg=current_worker.avg_daily_earnings,
-        dss_multiplier=adjusted_dss,
-        active_hours_ratio=effective_hours_ratio,
-        tier=policy.tier,
-        existing_claimed_today=claimed_today,
-    )
 
     claim = Claim(
         worker_id=current_worker.id,
