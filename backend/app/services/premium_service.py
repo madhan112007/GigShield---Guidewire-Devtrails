@@ -112,6 +112,7 @@ def get_dynamic_caps(tier: PolicyTier, city: str) -> tuple[float, float]:
     return daily_cap, weekly_cap
 
 
+def get_zone_risk(pincode: str) -> float:
     prefix = pincode[:3] if len(pincode) >= 3 else "000"
     return ZONE_RISK.get(prefix, 1.0)
 
