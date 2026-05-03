@@ -206,6 +206,18 @@ final devModeProvider =
 
 final selectedTierProvider = StateProvider<String>((ref) => 'smart');
 
+// ── Chat / SUSHI provider ─────────────────────────────────────────────────────
+
+final chatHistoryProvider =
+    FutureProvider.autoDispose<List<dynamic>>((ref) async {
+  final api = ref.watch(apiServiceProvider);
+  try {
+    return await api.getChatHistory();
+  } catch (_) {
+    return [];
+  }
+});
+
 // ── Live Risk Assessment ───────────────────────────────────────────────────────
 
 final liveRiskProvider =

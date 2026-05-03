@@ -15,6 +15,7 @@ import 'package:susanoo/screens/claims/claims_screen.dart';
 import 'package:susanoo/screens/profile/profile_screen.dart';
 import 'package:susanoo/screens/risk/live_risk_screen.dart';
 import 'package:susanoo/screens/shell_screen.dart';
+import 'package:susanoo/screens/support/chat_screen.dart';
 
 // Bridges Riverpod state changes into a Listenable that GoRouter can watch
 class _AuthListenable extends ChangeNotifier {
@@ -82,6 +83,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/claims', builder: (_, __) => const ClaimsScreen()),
           GoRoute(path: '/risk', builder: (_, __) => const LiveRiskScreen()),
           GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+          GoRoute(path: '/support/chat', builder: (_, __) => const ChatScreen()),
         ],
       ),
     ],
