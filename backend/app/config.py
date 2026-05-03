@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     TWITTER_CONSUMER_SECRET: str = "mock_key"
     TWITTER_ACCESS_TOKEN: str = "mock_key"
     TWITTER_ACCESS_TOKEN_SECRET: str = "mock_key"
+    # AI / Bedrock
+    AWS_REGION: str = "ap-south-1"
+    BEDROCK_MODEL_ID: str = "meta.llama3-1-70b-instruct-v1:0"
+    BEDROCK_MODEL_FALLBACK: str = "meta.llama3-1-8b-instruct-v1:0"
+    CHAT_MAX_TOKENS: int = 400
+    CHAT_MAX_HISTORY_MESSAGES: int = 10
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -253,4 +253,29 @@ class ApiService {
   Future<void> markAllNotificationsRead() async {
     await _dio.post('/notifications/read-all');
   }
+
+  // ── Chat / SUSHI ──────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> sendChatMessage(String message,
+      {String? conversationId}) async {
+    final res = await _dio.post('/chat/send', data: {
+      'message': message,
+      if (conversationId != null) 'conversation_id': conversationId,
+    });
+    return res.data;
+  }
+
+  Future<List<dynamic>> getChatHistory() async {
+    final res = await _dio.get('/chat/history');
+    return res.data;
+  }
+
+  Future<void> sendChatFeedback(String messageId, int rating,
+      {String? comment}) async {
+    await _dio.post('/chat/feedback', data: {
+      'message_id': messageId,
+      'rating': rating,
+      if (comment != null) 'comment': comment,
+    });
+  }
 }

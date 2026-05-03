@@ -111,6 +111,14 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.surface,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/support/chat'),
+        backgroundColor: AppTheme.primary,
+        icon: const Icon(Icons.smart_toy_rounded, color: Colors.white),
+        label: const Text('SUSHI',
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w700)),
+      ),
       body: dashAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),

@@ -95,6 +95,7 @@ class Worker(Base):
     claims = relationship("Claim", back_populates="worker")
     location_pings = relationship("WorkerLocationPing", back_populates="worker")
     notifications = relationship("WorkerNotification", back_populates="worker")
+    chat_messages = relationship("ChatMessage", back_populates="worker", cascade="all, delete")
 
 
 class Policy(Base):
@@ -208,6 +209,28 @@ class WorkerLocationPing(Base):
     recorded_at = Column(DateTime(timezone=True), server_default=func.now())
 
     worker = relationship("Worker", back_populates="location_pings")
+
+
+class ChatMessage(Base):
+    """Persisted chat history between worker and SUSHI AI."""
+    __tablename__ = "chat_messages"
+
+    id = Column(String, primary_key=True, default=gen_uuid)
+    worker_id = Column(String, ForeignKey("workers.id"), nullable=False, index=True)
+    conversation_id = Column(String, nullable=True, index=True)
+    sender_type = Column(String(20), nullable=False)  # user | bot | agent
+    content = Column(Text, nullable=False)
+    intent = Column(String(50), nullable=True)
+    should_escalate = Column(Boolean, default=False)
+    escalation_reason = Column(Text, nullable=True)
+    suggested_actions = Column(Text, nullable=True)  # JSON array string
+    confidence = Column(Float, nullable=True)
+    agent_used = Column(String(50), nullable=True)
+    language = Column(String(5), nullable=True, default="en")
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    worker = relationship("Worker", back_populates="chat_messages")
 
 
 class WorkerNotification(Base):

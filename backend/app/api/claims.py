@@ -11,6 +11,7 @@ from app.services.fraud_service import calculate_fraud_score
 from app.services.infra_service import get_infra_adjusted_dss
 from app.services.payout_service import initiate_upi_payout
 from app.services.notification_service import notify_claim_approved, notify_claim_rejected, notify_claim_paid
+from app.services.claim_explanation_service import ClaimExplanationService
 
 router = APIRouter()
 
@@ -337,12 +338,18 @@ async def trigger_claim(
 
     # Notify on rejection
     if claim.status == ClaimStatus.REJECTED:
+        explanation = await ClaimExplanationService().generate_explanation(claim, current_worker, event)
         await notify_claim_rejected(db, current_worker, claim)
+        from app.services.notification_service import _persist_notification
+        await _persist_notification(db, current_worker.id, "Claim Update", explanation, "claim_explanation", claim.id)
         await db.commit()
 
     # Auto-payout if approved and amount > 0
     if claim.status == ClaimStatus.APPROVED and (claim.approved_amount or 0) > 0:
+        explanation = await ClaimExplanationService().generate_explanation(claim, current_worker, event)
         await notify_claim_approved(db, current_worker, claim, event.disruption_type.value)
+        from app.services.notification_service import _persist_notification
+        await _persist_notification(db, current_worker.id, "Claim Approved ✅", explanation, "claim_explanation", claim.id)
         upi_id = current_worker.upi_id or "worker_" + current_worker.id[:8] + "@upi"
         payout_result = await initiate_upi_payout(
             worker_id=current_worker.id,
