@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from sqlalchemy import text
 import traceback
 
-from app.api import auth, workers, policies, claims, payouts, disruptions, actuarial, admin, location, notifications
+from app.api import auth, workers, policies, claims, payouts, disruptions, actuarial, admin, location, notifications, chat
 from app.database import engine, Base
 from app.config import settings
 
@@ -30,6 +30,9 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE disruption_events ADD COLUMN IF NOT EXISTS radius_km FLOAT DEFAULT 5.0",
             "ALTER TABLE workers ADD COLUMN IF NOT EXISTS fcm_token VARCHAR(200)",
             "CREATE TABLE IF NOT EXISTS worker_notifications (id VARCHAR PRIMARY KEY, worker_id VARCHAR REFERENCES workers(id), title VARCHAR(120) NOT NULL, body TEXT NOT NULL, notif_type VARCHAR(40) NOT NULL, ref_id VARCHAR(100), is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW())",
+            "CREATE TABLE IF NOT EXISTS chat_messages (id VARCHAR PRIMARY KEY, worker_id VARCHAR REFERENCES workers(id) ON DELETE CASCADE, conversation_id VARCHAR, sender_type VARCHAR(20) NOT NULL, content TEXT NOT NULL, intent VARCHAR(50), should_escalate BOOLEAN DEFAULT FALSE, escalation_reason TEXT, suggested_actions TEXT, confidence FLOAT, agent_used VARCHAR(50), language VARCHAR(5) DEFAULT 'en', is_read BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW())",
+            "CREATE INDEX IF NOT EXISTS idx_chat_messages_worker_id ON chat_messages(worker_id)",
+            "CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id ON chat_messages(conversation_id)",
         ]
         for sql in new_columns:
             try:
@@ -81,6 +84,7 @@ app.include_router(actuarial.router, prefix="/api/v1/actuarial", tags=["Actuaria
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(location.router, prefix="/api/v1/location", tags=["Location"])
 app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["Notifications"])
+app.include_router(chat.router, prefix="/api/v1/chat", tags=["Chat"])
 
 
 @app.get("/")
