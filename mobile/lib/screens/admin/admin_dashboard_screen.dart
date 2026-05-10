@@ -1194,6 +1194,28 @@ class _ClaimCardState extends State<_ClaimCard> {
                           const SizedBox(width: 6),
                           const Text('Agentic AI Investigation',
                               style: TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                          const SizedBox(width: 6),
+                          if (_investigation?['gemini_used'] == true)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4285F4).withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: const Color(0xFF4285F4).withOpacity(0.4)),
+                              ),
+                              child: const Text('Gemini 2.5',
+                                  style: TextStyle(color: Color(0xFF4285F4), fontSize: 9, fontWeight: FontWeight.w800)),
+                            )
+                          else if (_investigation != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.06),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('Fallback',
+                                  style: TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.w700)),
+                            ),
                           const Spacer(),
                           if (storedInvestigation != null)
                             GestureDetector(

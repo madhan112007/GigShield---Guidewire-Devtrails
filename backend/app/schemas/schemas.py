@@ -152,6 +152,7 @@ class ClaimResponse(BaseModel):
     fraud_score: float
     auto_approved: bool
     rejection_reason: Optional[str]
+    ai_investigation: Optional[str]  # JSON string — agentic verdict + steps
     created_at: datetime
     processed_at: Optional[datetime]
 
