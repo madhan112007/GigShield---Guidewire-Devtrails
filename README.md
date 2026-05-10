@@ -11,7 +11,7 @@
 ![Firebase](https://img.shields.io/badge/Firebase-FCM_V1-FFCA28?style=flat-square&logo=firebase&logoColor=black)
 ![i18n](https://img.shields.io/badge/Languages-English%20%7C%20Tamil%20%7C%20Hindi-blueviolet?style=flat-square)
 
-> **Guidewire DEVTrails 2026 Hackathon — Phase 2 Submission**
+> **Guidewire DEVTrails 2026 Hackathon **
 > *"The worker does nothing. Trigger fires → system pays → done in minutes."*
 
 ---
@@ -31,9 +31,10 @@
 11. [AI / ML Models](#11-ai--ml-models)
 12. [Actuarial Engine](#12-actuarial-engine)
 13. [Fraud Defense & GPS Anti-Spoofing](#13-fraud-defense--gps-anti-spoofing)
-14. [Tech Stack](#14-tech-stack)
-15. [System Architecture](#15-system-architecture)
-16. [Repository Structure](#16-repository-structure)
+14. [Agentic AI Claim Investigation](#14-agentic-ai-claim-investigation)
+15. [Tech Stack](#15-tech-stack)
+16. [System Architecture](#16-system-architecture)
+17. [Repository Structure](#17-repository-structure)
 
 ---
 
@@ -369,7 +370,89 @@ Backend calculates:
 
 ---
 
-## 14. Tech Stack
+## 14. Agentic AI Claim Investigation
+
+When the fraud engine scores a claim between **30–69** (hold for review), Susanoo's **Agentic AI** autonomously investigates the claim across 5 evidence dimensions and delivers a final verdict with a human-readable explanation — no manual queue needed.
+
+### Investigation Flow
+
+```
+Claim filed → fraud_score 30–69 → status = PENDING
+        ↓
+Agentic AI triggered (manual by admin OR auto every 10 min via Celery)
+        ↓
+┌─────────────────────────────────────────────────────────────┐
+│  Step 1 — Eligibility Re-Score          (weight: 30%)       │
+│  Re-runs fraud engine with fresh DB data                    │
+│  Pass: fresh_score < 50                                     │
+├─────────────────────────────────────────────────────────────┤
+│  Step 2 — GPS Corroboration             (weight: 25%)       │
+│  Were there real GPS pings near the event zone?             │
+│  Pass: ≥1 non-suspicious ping within 2× event radius        │
+├─────────────────────────────────────────────────────────────┤
+│  Step 3 — Zone Corroboration            (weight: 20%)       │
+│  Did other workers in the same pincode zone also claim?     │
+│  Pass: zone claim rate between 3% and 90%                   │
+├─────────────────────────────────────────────────────────────┤
+│  Step 4 — Claim History Pattern         (weight: 15%)       │
+│  Is this worker's historical rejection rate acceptable?     │
+│  Pass: rejection rate < 50% AND claims this week ≤ 4        │
+├─────────────────────────────────────────────────────────────┤
+│  Step 5 — Event Legitimacy              (weight: 10%)       │
+│  Is the disruption event itself credible?                   │
+│  Pass: event active or ended < 48h ago, ≥1 total claim      │
+└─────────────────────────────────────────────────────────────┘
+        ↓
+Confidence = (passed_weight / total_weight) × 100
+        ↓
+Verdict: APPROVED if confidence ≥ 55%, else REJECTED
+        ↓
+If REJECTED → penalty score applied to worker trust profile
+        ↓
+Worker notified (FCM push + in-app notification)
+```
+
+### Penalty Scoring
+
+When the agent rejects a claim, a penalty is added to the worker's `penalty_score` and `risk_score` based on how many steps failed:
+
+| Failed Steps | Penalty Added | Effect |
+|-------------|--------------|--------|
+| 1 | 0 | No penalty — borderline case |
+| 2 | +5 | Minor trust reduction |
+| 3 | +10 | Moderate trust reduction |
+| 4+ | +20 | Significant trust reduction |
+
+Penalty score is visible to admins on the Workers tab. Workers with elevated penalty scores face higher fraud scrutiny on future claims.
+
+### Admin Dashboard Integration
+
+The mobile admin dashboard (Claims tab) surfaces the full investigation UI:
+
+| UI Element | Description |
+|-----------|-------------|
+| Orange border | Pending claim with score ≥ 30 — needs investigation |
+| "Run AI Investigation" button | Triggers the 5-step agent, shows spinner |
+| Verdict chip | APPROVED (green) or REJECTED (red) with confidence % |
+| Penalty chip | Shows `+N penalty` if penalty was applied |
+| Expandable steps | Tap ▼ to see each step's ✅/❌ result and detail text |
+| ✓ Approve / ✗ Reject buttons | Manual admin override with reason dialog (post-investigation) |
+| Penalty badge on worker card | Red chip showing cumulative penalty score |
+
+### Automation
+
+A Celery beat task (`auto_investigate_pending_claims`) runs **every 10 minutes** and automatically processes all PENDING claims with `fraud_score ≥ 30` that have not yet been investigated. The admin queue self-resolves without manual intervention — admins only step in for edge cases or overrides.
+
+### API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/admin/claims/{id}/investigate` | Trigger agent, update claim status + worker penalty |
+| `POST` | `/admin/claims/{id}/override` | Manual approve or reject with reason |
+
+---
+
+## 15. Tech Stack
 
 ### Mobile
 | Technology | Purpose |
@@ -418,7 +501,7 @@ Backend calculates:
 
 ---
 
-## 15. System Architecture
+## 16. System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -447,8 +530,15 @@ Backend calculates:
 │  └─────────────────┘  └──────────────────┘  └────────────────┘  │
 │                                                                   │
 │  ┌─────────────────────────────────────────────────────────────┐ │
-│  │              Celery Workers (every 15 min)                  │ │
-│  │  poll_weather → DisruptionEvent → auto_claim → UPI payout  │ │
+│  │              Celery Workers                                 │ │
+│  │  poll_weather (15min) → DisruptionEvent → auto_claim        │ │
+│  │  auto_investigate_pending_claims (10min) → verdict+penalty  │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                                                                   │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │              Agentic AI Investigation Engine                │ │
+│  │  5-step: Re-Score → GPS → Zone → History → Event           │ │
+│  │  Weighted verdict → APPROVED/REJECTED + penalty score       │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 └──────┬──────────────┬──────────────┬──────────────┬─────────────┘
        │              │              │              │
@@ -465,7 +555,7 @@ Backend calculates:
 
 ---
 
-## 16. Repository Structure
+## 17. Repository Structure
 
 ```
 susanoo/
@@ -481,13 +571,14 @@ susanoo/
 │   │   │   ├── payouts.py            # Payout history
 │   │   │   ├── actuarial.py          # BCR, stress test, premium formula
 │   │   │   ├── location.py           # GPS ping + spoof detection + /weather endpoint
-│   │   │   └── admin.py              # Clear test data
+│   │   │   └── admin.py              # Stats, claims, workers, investigate + override endpoints
 │   │   ├── models/models.py          # SQLAlchemy ORM
 │   │   ├── schemas/schemas.py        # Pydantic schemas
 │   │   └── services/
 │   │       ├── premium_service.py    # XGBoost + rule-based premium
 │   │       ├── disruption_service.py # 5 triggers + hyper-local DSS
 │   │       ├── fraud_service.py      # Rule-based + individual baseline + zone-level fraud scoring
+│   │       ├── agentic_service.py    # 5-step AI investigation engine + penalty scoring
 │   │       ├── payout_service.py     # UPI + IMPS + rollback + SMS
 │   │       ├── notification_service.py # FCM push + DB-persisted in-app notifications
 │   │       ├── actuarial_service.py  # BCR, stress test
@@ -526,54 +617,6 @@ susanoo/
 └── README.md
 ```
 
----
-
-## Changelog
-
-### Phase 3 Post-Review Improvements
-
-#### 1. Celery Deployment Robustness
-- Fixed fragile `api → worker → beat` dependency chain in `docker-compose.yml` — `worker` and `beat` now depend directly on `db` and `redis` with health checks, starting independently of the API
-- Added `--scheduler celery.beat:PersistentScheduler` so the beat schedule survives container restarts
-- Fixed missing `from app.config import settings` import in `main.py` that caused the global 500 handler to crash with a `NameError`
-
-#### 2. Notification System
-- **`notification_service.py`** — dual-channel engine: FCM push (optional) + DB-persisted in-app feed. Covers `claim_approved`, `claim_rejected`, `claim_paid`, `disruption_detected`, `policy_expiring`
-- **`WorkerNotification` model** — in-app notification feed table with `is_read` tracking
-- **`Worker.fcm_token`** — stores Firebase push token per device, registered via `POST /api/v1/workers/fcm-token`
-- **`GET /api/v1/notifications`** — mobile app polls its notification feed (last 50)
-- **`POST /api/v1/notifications/{id}/read`** and **`/read-all`** — mark notifications read
-- Notifications wired into `claims.py` at all three lifecycle transitions: approved → rejected → paid
-- FCM key is optional — without it, notifications are DB-only (in-app feed still works, SMS on payout still fires)
-
-#### 3. Enhanced Fraud Detection — Individual vs Zone-Level Behavioral Analysis
-- **Individual behavioral baseline** — compares current week's claims to the worker's own 12-week historical average. A worker who normally claims 0.5×/week suddenly claiming 4× is flagged (`INDIVIDUAL_BASELINE_SPIKE: +20`), not just anyone with 3+ claims
-- **Zone-level corroboration** — if <5% of workers in the same pincode zone claimed this event, the event isn't corroborated (`ZONE_LOW_CORROBORATION: +15`); if >90% claimed, it's flagged as a coordinated fraud ring (`ZONE_COORDINATED_FRAUD_RISK: +20`)
-- Zone stats (claim count + total active workers per pincode prefix) queried in `claims.py` and passed into `calculate_fraud_score()`
-
-#### 4. Granular Geographic Risk Assessment — Ward-Level Premiums
-- Added `SUB_ZONE_RISK` dict in `premium_service.py` with full 6-digit pincode multipliers derived from claim density, NDMA flood zone maps, and IMD heat island data
-- Examples: Mumbai Dharavi (`400017: 1.55`) vs Bandra (`400050: 1.25`); Bangalore Koramangala (`560034: 1.40`) vs Whitefield (`560066: 1.10`)
-- `get_sub_zone_risk()` uses ward-level multiplier when available, falls back to 3-digit zone risk
-- A worker in 560034 pays ~27% more than one in 560066 for the same tier — same city, fairer pricing
-
-### Latest Updates (Previous)
-- **Phase 3 Judge Feedback Upgrades** — Added a complete Predictive Analytics HQ to the Admin Dashboard including:
-  - **BCR & Loss Ratio Monitoring**: Real-time actuarial health tracking per city.
-  - **Predictive Forecasts**: Next-week claim volume prediction using XGBoost.
-  - **Fraud Deep-Dive**: Isolation Forest anomaly visualization per claim.
-  - **Actuarial Stress Testing**: Simulation mode for extreme climate events.
-  - **Worker Status Indicator**: Live health monitoring of Celery background polling tasks.
-- **Terms & Conditions** — Professional T&C screen shown on first launch with 5 collapsible sections, 3 consent checkboxes, language picker. Accepted state persisted via SharedPreferences.
-- **Multilingual (i18n)** — Full English / Tamil / Hindi support across all screens. Language picker on phone screen and profile. Persisted across sessions.
-- **Location Permission** — Fixed to trigger native Android OS dialog immediately on first install using `Geolocator.requestPermission()`.
-- **Live Risk Screen** — New screen with GPS-based live weather card (temperature, humidity, wind, AQI, PM2.5) from OpenWeatherMap using exact lat/lon coordinates. Risk probability gauge, factor breakdown, advice card.
-- **Backend `/location/weather`** — New endpoint accepting `lat`/`lon`, returns full weather + AQI from OpenWeatherMap in one call.
-- **Emoji removal** — All emojis replaced with Material Icons throughout the app for consistency and rendering reliability.
-- **Nav bar** — Fixed Tamil label truncation with `Expanded` + `maxLines: 1` + `overflow: TextOverflow.ellipsis`.
-- **OTP delivery** — Updated to reflect OTP delivery via phone call (not SMS).
-
----
 
 ## Conclusion
 
@@ -585,7 +628,8 @@ By combining **parametric insurance mechanics**, **hyper-local infrastructure-aw
 - **Automatic** — Zero manual claim filing. Trigger fires → system pays → done in minutes
 - **Hyper-local** — Same rainfall = different payout based on city drainage quality
 - **Actuarially sound** — BCR target 0.55–0.70, stress-tested for 14-day monsoon
-- **Fraud-resistant** — GPS anti-spoofing + network-level ring detection
+- **Fraud-resistant** — GPS anti-spoofing + network-level ring detection + Agentic AI investigation
+- **Self-resolving review queue** — Agentic AI auto-investigates pending claims every 10 min, no manual backlog
 - **Accessible** — Full English, Tamil, and Hindi support from first screen to last
 - **Scalable** — Celery workers handle city-wide events for thousands of workers simultaneously
 
