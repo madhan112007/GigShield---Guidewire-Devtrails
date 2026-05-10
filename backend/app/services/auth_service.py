@@ -132,6 +132,9 @@ async def get_current_worker(
     if worker is None or getattr(worker, 'is_deleted', False):
         raise credentials_exception
     return worker
+
+
+async def get_current_auth_context(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> AuthContext:
