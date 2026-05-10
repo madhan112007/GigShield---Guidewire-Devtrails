@@ -47,7 +47,30 @@ async def verify_otp_endpoint(payload: OTPVerify, db: AsyncSession = Depends(get
 
     result = await db.execute(select(Worker).where(Worker.phone == payload.phone))
     worker = result.scalar_one_or_none()
-    is_new = worker is None
+
+    # Block re-registration during 30-day grace period
+    if worker is None:
+        import hashlib
+        from datetime import datetime, timezone
+        from app.models.models import DeletedAccountArchive
+        phone_hash = hashlib.sha256(payload.phone.encode()).hexdigest()
+        archive_result = await db.execute(
+            select(DeletedAccountArchive).where(
+                DeletedAccountArchive.phone_hash == phone_hash,
+                DeletedAccountArchive.grace_period_ends_at > datetime.now(timezone.utc),
+                DeletedAccountArchive.purged_at.is_(None),
+            )
+        )
+        archive = archive_result.scalar_one_or_none()
+        if archive:
+            days_left = (archive.grace_period_ends_at - datetime.now(timezone.utc)).days
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Account deleted. You can re-register after {days_left} day(s).",
+            )
+
+    # Treat deleted workers as new users (phone was anonymised, so worker is None after 30 days)
+    is_new = worker is None or getattr(worker, 'is_deleted', False)
 
     if is_new:
         worker = Worker(phone=payload.phone, name="", platform="zomato", city="Unknown", pincode="000000")
@@ -111,7 +134,7 @@ async def refresh_token_endpoint(payload: RefreshRequest, db: AsyncSession = Dep
 
     result = await db.execute(select(Worker).where(Worker.id == str(worker_id)))
     worker = result.scalar_one_or_none()
-    if worker is None:
+    if worker is None or getattr(worker, 'is_deleted', False):
         raise credentials_exception
 
     new_access = create_access_token({"sub": str(worker.id), "phone": worker.phone, "dev_mode": is_dev_mode})

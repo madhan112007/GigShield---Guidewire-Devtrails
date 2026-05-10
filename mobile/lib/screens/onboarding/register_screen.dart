@@ -214,7 +214,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Enter the pincode of the area where you deliver — not your home pincode. This sets your ward-level premium.',
+                          'Enter the pincode of the area where you deliver — not your home pincode. This helps us price your premium based on your delivery zone\'s risk level.',
                           style: TextStyle(fontSize: 11, color: AppTheme.primary, height: 1.4),
                         ),
                       ),

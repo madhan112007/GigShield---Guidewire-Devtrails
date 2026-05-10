@@ -129,12 +129,9 @@ async def get_current_worker(
 
     result = await db.execute(select(Worker).where(Worker.id == str(worker_id)))
     worker = result.scalar_one_or_none()
-    if worker is None:
+    if worker is None or getattr(worker, 'is_deleted', False):
         raise credentials_exception
     return worker
-
-
-async def get_current_auth_context(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> AuthContext:
@@ -154,6 +151,6 @@ async def get_current_auth_context(
 
     result = await db.execute(select(Worker).where(Worker.id == str(worker_id)))
     worker = result.scalar_one_or_none()
-    if worker is None:
+    if worker is None or getattr(worker, 'is_deleted', False):
         raise credentials_exception
     return AuthContext(worker=worker, is_dev_mode=bool(payload.get("dev_mode", False)))

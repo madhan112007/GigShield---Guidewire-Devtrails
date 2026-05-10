@@ -237,7 +237,7 @@ class _TermsScreenState extends ConsumerState<TermsScreen> {
                     color: AppTheme.warning,
                     content: [
                       _Clause('4.1 Location Access',
-                          'Susanoo requires access to your device\'s GPS location to: (a) verify you are within an active disruption zone, (b) detect GPS spoofing attempts, and (c) improve hyper-local risk models.'),
+                          'Susanoo requires access to your device\'s GPS location to: (a) verify you are within an active disruption zone, (b) detect GPS spoofing attempts, and (c) build your personal delivery zone for accurate claim eligibility.'),
                       _Clause('4.2 Background Location',
                           'Location is collected only during active hours (6 AM – 10 PM) at 10-minute intervals. We do not collect location data outside these hours or when the app is closed.'),
                       _Clause('4.3 Consent Withdrawal',

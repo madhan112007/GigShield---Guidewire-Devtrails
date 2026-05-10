@@ -39,10 +39,61 @@ def _is_mock():
 @router.post("/create-order", response_model=PolicyOrderResponse)
 async def create_order(
     payload: PolicyCreate,
+    db: AsyncSession = Depends(get_db),
     current_worker: Worker = Depends(get_current_worker),
 ):
+    from sqlalchemy import func
+    from app.models.models import Claim, ClaimStatus
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
     pincode = payload.pincode or current_worker.pincode
-    premium_data = await calculate_premium(tier=payload.tier, pincode=pincode, city=current_worker.city)
+
+    # Compute the same discount inputs used by /quote so the order amount matches
+    no_claims_weeks = 0
+    for week in range(1, 13):
+        week_start = now - timedelta(weeks=week)
+        week_end   = now - timedelta(weeks=week - 1)
+        claims_in_week = await db.execute(
+            select(func.count(Claim.id)).where(
+                Claim.worker_id == current_worker.id,
+                Claim.created_at >= week_start,
+                Claim.created_at < week_end,
+                Claim.status.in_([ClaimStatus.APPROVED, ClaimStatus.PAID]),
+            )
+        )
+        if (claims_in_week.scalar() or 0) == 0:
+            no_claims_weeks += 1
+        else:
+            break
+
+    policy_count_result = await db.execute(
+        select(func.count(Policy.id)).where(Policy.worker_id == current_worker.id)
+    )
+    policy_count = policy_count_result.scalar() or 1
+
+    twelve_weeks_ago = now - timedelta(weeks=12)
+    actual_claims_result = await db.execute(
+        select(func.count(Claim.id)).where(
+            Claim.worker_id == current_worker.id,
+            Claim.created_at >= twelve_weeks_ago,
+            Claim.status.in_([ClaimStatus.APPROVED, ClaimStatus.PAID]),
+        )
+    )
+    actual_claims_12w = actual_claims_result.scalar() or 0
+    worker_history_factor = 0.90 if actual_claims_12w == 0 else round(
+        max(0.85, min(1.30, actual_claims_12w / 6.0)), 3
+    )
+
+    premium_data = await calculate_premium(
+        tier=payload.tier,
+        pincode=pincode,
+        city=current_worker.city,
+        worker_history_factor=worker_history_factor,
+        platform_activity_score=1.0,
+        no_claims_weeks=no_claims_weeks,
+        policy_count=policy_count,
+    )
     amount_paise = int(premium_data["adjusted_premium"] * 100)
     key_id, _ = _active_keys()
 

@@ -142,23 +142,14 @@ void _confirmDeleteAccount(BuildContext context, WidgetRef ref) {
         ),
         ElevatedButton(
           onPressed: () async {
-            Navigator.pop(dialogCtx); // close dialog first using dialogCtx
+            Navigator.pop(dialogCtx);
             try {
               await ref.read(apiServiceProvider).deleteAccount();
-              await ref.read(authProvider.notifier).logout();
-              // Use context only after dialog is fully closed
-              if (context.mounted) context.go('/auth/phone');
-            } catch (e) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to delete account: $e'),
-                    backgroundColor: AppTheme.danger,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
+            } catch (_) {
+              // Even if API fails, force logout locally
             }
+            await ref.read(authProvider.notifier).logout();
+            if (context.mounted) context.go('/auth/phone');
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.red,

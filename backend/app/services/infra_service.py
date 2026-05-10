@@ -139,14 +139,14 @@ async def get_activity_zone_infra_score(
     days: int = 30,
 ) -> float:
     """
-    Calculate worker's activity zone infra score from last N days of GPS pings.
+    Compute worker's activity zone infra score from last N days of GPS pings.
 
-    Gig workers move across multiple wards daily. This builds a weighted infra
-    score based on WHERE they actually spend their working time — not just their
-    registered address or a single ping.
+    Gig workers move across multiple delivery zones daily. This builds a weighted
+    infra score based on WHERE they actually spend their working time — not just
+    their registered address or a single ping.
 
     Each unique pincode gets a weight proportional to how many pings came from it.
-    More time in a ward = higher weight in the final score.
+    More time in a zone = higher weight in the final score.
 
     Fallback: registered city/pincode if no GPS history.
     """
@@ -190,6 +190,41 @@ async def get_activity_zone_infra_score(
         weighted_score += score * weight
 
     return round(weighted_score, 3)
+
+
+async def resolve_worker_adjusted_dss(
+    event,
+    worker_id: str,
+    worker_city: str,
+    worker_pincode: str,
+    db,
+) -> tuple[float, float, float]:
+    """
+    Single entry point used by ALL claim paths (manual, auto-claim, batch).
+    Returns (adjusted_dss, adjusted_hours_ratio, infra_score).
+
+    Fetches the worker's GPS-weighted activity zone infra score, then delegates
+    to get_infra_adjusted_dss — ensuring every path uses identical logic.
+    """
+    try:
+        activity_infra = await get_activity_zone_infra_score(
+            worker_id=worker_id,
+            db=db,
+            fallback_city=worker_city,
+            fallback_pincode=worker_pincode,
+            days=30,
+        )
+    except Exception:
+        activity_infra = None
+
+    return await get_infra_adjusted_dss(
+        base_dss=event.dss_multiplier,
+        city=worker_city,
+        pincode=worker_pincode,
+        disruption_type=event.disruption_type.value,
+        severity=event.severity.value,
+        activity_zone_infra=activity_infra,
+    )
 
 
 async def get_infra_adjusted_dss(

@@ -160,6 +160,14 @@ class HomeScreen extends ConsumerWidget {
                         )),
                       ],
                     ),
+                    const SizedBox(height: 16),
+
+                    // ── My Dashboard button ───────────────────────────────
+                    _MyDashboardBanner(
+                      claims: claims,
+                      totalProtected: totalProtected,
+                      worker: worker,
+                    ),
                     const SizedBox(height: 20),
 
                     // Active Disruptions — deduplicated by type
@@ -876,6 +884,455 @@ class _ClaimTile extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ── My Dashboard Banner ───────────────────────────────────────────────────────
+class _MyDashboardBanner extends StatelessWidget {
+  final List<dynamic> claims;
+  final double totalProtected;
+  final Map<String, dynamic> worker;
+  const _MyDashboardBanner({
+    required this.claims,
+    required this.totalProtected,
+    required this.worker,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final paid = claims.where((c) => (c as Map)['status'] == 'paid').length;
+    final pending = claims.where((c) => (c as Map)['status'] == 'pending').length;
+
+    return GestureDetector(
+      onTap: () => _showPersonalDashboard(context, claims, totalProtected, worker),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF1E3A5F)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.bar_chart_rounded, color: Colors.white, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('My Protection Dashboard',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14)),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${claims.length} claims • ₹${totalProtected.toStringAsFixed(0)} earned • $paid paid',
+                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            if (pending > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.warning.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text('$pending pending',
+                    style: const TextStyle(
+                        color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+              ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+void _showPersonalDashboard(
+  BuildContext context,
+  List<dynamic> claims,
+  double totalProtected,
+  Map<String, dynamic> worker,
+) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => _PersonalDashboardSheet(
+      claims: claims,
+      totalProtected: totalProtected,
+      worker: worker,
+    ),
+  );
+}
+
+class _PersonalDashboardSheet extends StatelessWidget {
+  final List<dynamic> claims;
+  final double totalProtected;
+  final Map<String, dynamic> worker;
+  const _PersonalDashboardSheet({
+    required this.claims,
+    required this.totalProtected,
+    required this.worker,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final paidAmount = claims
+        .where((c) => (c as Map)['status'] == 'paid')
+        .fold(0.0, (sum, c) => sum + ((c as Map)['approved_amount'] as num? ?? 0).toDouble());
+    final pending = claims.where((c) => (c as Map)['status'] == 'pending').length;
+    final rejected = claims.where((c) => (c as Map)['status'] == 'rejected').length;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      maxChildSize: 0.95,
+      minChildSize: 0.5,
+      builder: (_, ctrl) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.divider,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                children: [
+                  const Icon(Icons.bar_chart_rounded, color: AppTheme.primary, size: 22),
+                  const SizedBox(width: 10),
+                  const Text('My Protection Dashboard',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                controller: ctrl,
+                padding: const EdgeInsets.all(20),
+                children: [
+                  // Summary stats
+                  Row(
+                    children: [
+                      _DashStat('Total Earned', '₹${totalProtected.toStringAsFixed(0)}',
+                          Icons.savings_rounded, AppTheme.success),
+                      const SizedBox(width: 12),
+                      _DashStat('Claims Filed', '${claims.length}',
+                          Icons.receipt_long_rounded, AppTheme.primary),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _DashStat('Paid Out', '₹${paidAmount.toStringAsFixed(0)}',
+                          Icons.payments_rounded, AppTheme.success),
+                      const SizedBox(width: 12),
+                      _DashStat('Pending / Rejected', '$pending / $rejected',
+                          Icons.pending_rounded, AppTheme.warning),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  const Text('Claim History',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 12),
+                  if (claims.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          children: [
+                            Icon(Icons.receipt_long_outlined,
+                                size: 48, color: AppTheme.textHint),
+                            const SizedBox(height: 12),
+                            const Text('No claims yet',
+                                style: TextStyle(
+                                    color: AppTheme.textSecondary, fontSize: 15)),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    ...claims.map((c) =>
+                        _ClaimDetailCard(claim: c as Map<String, dynamic>)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DashStat extends StatelessWidget {
+  final String label, value;
+  final IconData icon;
+  final Color color;
+  const _DashStat(this.label, this.value, this.icon, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 8),
+            Text(value,
+                style: TextStyle(
+                    fontSize: 20, fontWeight: FontWeight.w800, color: color)),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ClaimDetailCard extends StatelessWidget {
+  final Map<String, dynamic> claim;
+  const _ClaimDetailCard({required this.claim});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = claim['status'] as String? ?? 'pending';
+    final approved = (claim['approved_amount'] as num?)?.toDouble();
+    final claimed = (claim['claimed_amount'] as num?)?.toDouble() ?? 0;
+    final dss = ((claim['dss_multiplier'] as num?)?.toDouble() ?? 0) * 100;
+    final hoursRatio = ((claim['active_hours_ratio'] as num?)?.toDouble() ?? 0) * 100;
+    final fraudScore = (claim['fraud_score'] as num?)?.toDouble() ?? 0;
+    final autoApproved = claim['auto_approved'] as bool? ?? false;
+
+    String dateStr = '', timeStr = '', dayStr = '';
+    if (claim['created_at'] != null) {
+      final dt = DateTime.parse(claim['created_at'] as String).toLocal();
+      dateStr = DateFormat('dd MMM yyyy').format(dt);
+      timeStr = DateFormat('hh:mm a').format(dt);
+      dayStr = DateFormat('EEEE').format(dt);
+    }
+
+    final statusColor = {
+      'paid': AppTheme.success,
+      'approved': AppTheme.primary,
+      'rejected': AppTheme.danger,
+      'pending': AppTheme.warning,
+    }[status] ?? AppTheme.textSecondary;
+
+    final disruptionType = (claim['disruption_type'] as String? ?? '')
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
+        .join(' ');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: statusColor.withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: statusColor.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Date block
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        dateStr.isNotEmpty ? dateStr.split(' ')[0] : '--',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: statusColor),
+                      ),
+                      Text(
+                        dateStr.isNotEmpty
+                            ? '${dateStr.split(' ')[1]} ${dateStr.split(' ')[2]}'
+                            : '',
+                        style: const TextStyle(
+                            fontSize: 10, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        disruptionType.isNotEmpty ? disruptionType : 'Disruption Event',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14),
+                      ),
+                      const SizedBox(height: 2),
+                      Text('$dayStr • $timeStr',
+                          style: const TextStyle(
+                              fontSize: 12, color: AppTheme.textSecondary)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          if (autoApproved)
+                            Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryLight,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text('AI AUTO',
+                                  style: TextStyle(
+                                      fontSize: 9,
+                                      color: AppTheme.primary,
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(status.toUpperCase(),
+                                style: TextStyle(
+                                    fontSize: 9,
+                                    color: statusColor,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '₹${(approved ?? claimed).toStringAsFixed(0)}',
+                      style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: statusColor),
+                    ),
+                    if (approved != null && approved != claimed)
+                      Text(
+                        'of ₹${claimed.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                            fontSize: 10, color: AppTheme.textSecondary),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: const BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _MiniStat('Disruption', '${dss.toInt()}%'),
+                _MiniStat('Hours Affected', '${hoursRatio.toInt()}%'),
+                _MiniStat(
+                  'Risk Score',
+                  '${(fraudScore * 100).toInt()}',
+                  color: fraudScore > 0.7
+                      ? AppTheme.danger
+                      : fraudScore > 0.3
+                          ? AppTheme.warning
+                          : AppTheme.success,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String label, value;
+  final Color? color;
+  const _MiniStat(this.label, this.value, {this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(value,
+            style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+                color: color ?? AppTheme.textPrimary)),
+        const SizedBox(height: 2),
+        Text(label,
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 10)),
+      ],
     );
   }
 }

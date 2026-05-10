@@ -3,17 +3,21 @@ AI-Powered Dynamic Premium Calculation Engine
 Phase 2: XGBoost model inference with rule-based fallback.
 """
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timezone
+import logging
 import os
 import joblib
 import numpy as np
 from app.models.models import PolicyTier
 
+_log = logging.getLogger(__name__)
+
 # Load XGBoost model if available (trained via ml/premium_engine/train.py)
 _MODEL_PATH = os.path.join(os.path.dirname(__file__), "../../ml/premium_engine/model.joblib")
 try:
     _ml_model = joblib.load(_MODEL_PATH)
-except Exception:
+except Exception as e:
+    _log.warning("[PremiumEngine] XGBoost model not loaded — falling back to rule-based: %s", e)
     _ml_model = None
 
 _TIER_IDX = {PolicyTier.BASIC: 0, PolicyTier.SMART: 1, PolicyTier.PRO: 2}
@@ -51,8 +55,10 @@ ZONE_RISK = {
     "700": 1.05, # Kolkata
 }
 
-# Sub-zone (ward-level) risk multipliers by full 6-digit pincode.
+# Sub-zone risk multipliers by full 6-digit pincode.
 # Derived from historical claim density per pincode — higher claim rate = higher risk = higher premium.
+# Pincode covers ~8-10 km. GPS delivery grid (WorkerDeliveryGrid) provides finer resolution
+# once the worker has 60+ pings (approx 1 week of active delivery).
 # Sources: internal claim history + NDMA flood zone maps + IMD heat island data.
 SUB_ZONE_RISK = {
     # Mumbai — Dharavi/Kurla flood corridor
@@ -75,7 +81,9 @@ SUB_ZONE_RISK = {
 
 
 def get_sub_zone_risk(pincode: str) -> float:
-    """Return ward-level risk if known, else fall back to 3-digit zone risk."""
+    """Return pincode-level risk if known, else fall back to 3-digit zone risk.
+    Pincode covers ~8-10 km. For finer resolution, use WorkerDeliveryGrid (GPS-based).
+    """
     if pincode in SUB_ZONE_RISK:
         return SUB_ZONE_RISK[pincode]
     return get_zone_risk(pincode)
@@ -118,7 +126,10 @@ def get_zone_risk(pincode: str) -> float:
 
 
 def get_season_factor() -> float:
-    return SEASON_FACTORS.get(datetime.now().month, 1.0)
+    # Use IST (UTC+5:30) so the season factor is correct for Indian workers
+    from datetime import timezone, timedelta
+    IST = timezone(timedelta(hours=5, minutes=30))
+    return SEASON_FACTORS.get(datetime.now(IST).month, 1.0)
 
 
 async def get_zone_risk_ai(city: str, pincode: str) -> float:
@@ -187,19 +198,21 @@ async def calculate_premium(
     else:
         zone_risk = get_sub_zone_risk(pincode)
 
-    ml_premium = _ml_predict_premium(tier, pincode, worker_history_factor, platform_activity_score, zone_risk)
-    if ml_premium is not None:
-        adjusted = round(ml_premium * zone_risk * season, 2)
-    else:
-        adjusted = base * zone_risk * season * worker_history_factor * platform_activity_score
-        adjusted = round(adjusted, 2)
-
+    # Discount vars must be computed before either ML or rule-based path uses them
     # No-claims discount: 5% per 4 consecutive claim-free weeks, max 15%
     no_claims_discount = min(0.15, (no_claims_weeks // 4) * 0.05)
     # Continuing insurer (loyalty) discount: 4% per renewal, max 8%
     loyalty_discount = min(0.08, (max(0, policy_count - 1)) * 0.04)
     total_discount = no_claims_discount + loyalty_discount
-    adjusted = round(adjusted * (1 - total_discount), 2)
+
+    ml_premium = _ml_predict_premium(tier, pincode, worker_history_factor, platform_activity_score, zone_risk)
+    if ml_premium is not None:
+        # XGBoost already includes zone_risk and season in its features —
+        # do NOT multiply again; apply only the discount on top.
+        adjusted = round(ml_premium * (1 - total_discount), 2)
+    else:
+        adjusted = base * zone_risk * season * worker_history_factor * platform_activity_score
+        adjusted = round(adjusted * (1 - total_discount), 2)
 
     return {
         "tier": tier,
@@ -230,33 +243,43 @@ def calculate_payout(
     tier: PolicyTier,
     existing_claimed_today: float = 0.0,
     city: str = "",
-    use_subsistence_adjustment: bool = False,
 ) -> dict:
     """
-    Payout = actual income loss, optionally adjusted for cost of living.
-
-    use_subsistence_adjustment=False (default):
-      Fixed payout — worker receives full raw_loss regardless of savings habits.
-      Preferred for standard insurance products.
-
-    use_subsistence_adjustment=True:
-      Net-loss payout — effective_loss = raw_loss × (1 - subsistence_ratio × 0.5)
-      Reflects real hardship: Mumbai rider (ratio=0.58) vs Coimbatore rider (ratio=0.40).
-
+    Payout = actual income loss adjusted for city Cost of Living.
+    Effective loss = raw_loss x (1 - subsistence_ratio x 0.5)
     Capped at CoL-adjusted daily cap.
     """
-    from app.services.platform_service import get_city_economics, DEFAULT_SUBSISTENCE
-    col_index, subsistence_ratio = get_city_economics(city) if city else (1.0, DEFAULT_SUBSISTENCE)
+    # Inline CoL lookup to avoid circular import
+    _CITY_ECONOMICS = {
+        "Mumbai": (1.45, 0.58), "Delhi": (1.35, 0.52), "Bangalore": (1.30, 0.53),
+        "Chennai": (1.20, 0.50), "Hyderabad": (1.15, 0.48), "Pune": (1.15, 0.48),
+        "Kolkata": (1.10, 0.50), "Noida": (1.25, 0.51), "Gurgaon": (1.30, 0.52),
+        "Ahmedabad": (1.05, 0.44), "Coimbatore": (1.00, 0.40),
+        "Madurai": (0.90, 0.38), "Tiruchirappalli": (0.88, 0.38),
+        "Kochi": (1.05, 0.45), "Chandigarh": (1.10, 0.46),
+        "Lucknow": (0.95, 0.42), "Patna": (0.75, 0.36),
+        "Guwahati": (0.80, 0.37), "Ranchi": (0.78, 0.36),
+        "Jaipur": (1.00, 0.42), "Indore": (0.95, 0.41),
+        "Nagpur": (0.95, 0.41), "Bhopal": (0.90, 0.40),
+        "Varanasi": (0.80, 0.37), "Surat": (1.05, 0.43),
+    }
+    col_index, subsistence_ratio = (1.0, 0.42)
+    if city:
+        for known, vals in _CITY_ECONOMICS.items():
+            if known.lower() in city.lower() or city.lower() in known.lower():
+                col_index, subsistence_ratio = vals
+                break
 
     raw_loss = round(worker_daily_avg * dss_multiplier * active_hours_ratio, 2)
-    if use_subsistence_adjustment:
-        effective_loss = round(raw_loss * (1 - subsistence_ratio * 0.5), 2)
-    else:
-        effective_loss = raw_loss
+    # Scale loss by CoL index: Mumbai worker (col=1.45) loses more in absolute terms
+    # than a Patna worker (col=0.75) for the same disruption — payout reflects that.
+    effective_loss = round(raw_loss * col_index, 2)
 
-    # Dynamic cap based on CoL
     daily_cap = round(MAX_DAILY_PAYOUT[tier] * col_index, 2)
-    remaining_cap = max(0.0, daily_cap - existing_claimed_today)
+    weekly_cap_dynamic = round(MAX_WEEKLY_PAYOUT[tier] * col_index, 2)
+    # Enforce both daily and weekly caps
+    daily_remaining = max(0.0, daily_cap - existing_claimed_today)
+    remaining_cap = min(daily_remaining, weekly_cap_dynamic)
     approved_amount = round(min(effective_loss, remaining_cap), 2)
 
     estimated_actual = round(worker_daily_avg * (1 - dss_multiplier * active_hours_ratio), 2)
@@ -272,6 +295,7 @@ def calculate_payout(
         "effective_loss":     effective_loss,
         "raw_payout":         effective_loss,
         "tier_cap":           daily_cap,
+        "weekly_cap":         weekly_cap_dynamic,
         "remaining_cap":      remaining_cap,
         "approved_amount":    approved_amount,
         "capped":             effective_loss > remaining_cap,
