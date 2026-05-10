@@ -1019,59 +1019,325 @@ class _ClaimsTab extends ConsumerWidget {
   }
 }
 
-class _ClaimCard extends StatelessWidget {
+class _ClaimCard extends StatefulWidget {
   final Map<String, dynamic> claim;
   const _ClaimCard({required this.claim});
 
   @override
-  Widget build(BuildContext context) {
-    final score = (claim['eligibility_score'] as num?)?.toInt() ?? 0;
-    final status = claim['status'] as String? ?? '';
-    final scoreColor = score > 70 ? AppTheme.danger : score > 30 ? AppTheme.warning : AppTheme.success;
-    final statusColor = status == 'paid'
-        ? AppTheme.success
-        : status == 'approved'
-            ? AppTheme.primary
-            : status == 'rejected'
-                ? AppTheme.danger
-                : AppTheme.warning;
+  State<_ClaimCard> createState() => _ClaimCardState();
+}
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: scoreColor.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-            child: Center(child: Text('$score', style: TextStyle(color: scoreColor, fontWeight: FontWeight.w800, fontSize: 13))),
+class _ClaimCardState extends State<_ClaimCard> {
+  bool _expanded = false;
+  bool _loading = false;
+  Map<String, dynamic>? _investigation;
+  String? _error;
+
+  Future<void> _runInvestigation(BuildContext context, WidgetRef ref) async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final api = ref.read(apiServiceProvider);
+      final result = await api.investigateClaim(widget.claim['id'] as String);
+      setState(() {
+        _investigation = result['investigation'] as Map<String, dynamic>?;
+        _loading = false;
+        _expanded = true;
+      });
+      ref.invalidate(_adminClaimsProvider);
+    } catch (e) {
+      setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  Future<void> _override(BuildContext context, WidgetRef ref, String action) async {
+    final reasonCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: Text(
+          '${action == 'approve' ? 'Approve' : 'Reject'} Claim',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        ),
+        content: TextField(
+          controller: reasonCtrl,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Reason (optional)',
+            hintStyle: const TextStyle(color: Colors.white38),
+            enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+            focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.primary)),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(claim['worker'] as String? ?? '—', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-                Text('${claim['city'] ?? ''} • ${claim['event'] ?? ''}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(claim['amount'] as String? ?? '—', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-              const SizedBox(height: 4),
-              _Chip(label: status.toUpperCase(), color: statusColor),
-            ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel', style: TextStyle(color: Colors.white38))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(action == 'approve' ? 'Approve' : 'Reject',
+                style: TextStyle(color: action == 'approve' ? AppTheme.success : AppTheme.danger, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
+    );
+    if (confirmed != true) return;
+    setState(() => _loading = true);
+    try {
+      final api = ref.read(apiServiceProvider);
+      await api.overrideClaim(
+        widget.claim['id'] as String,
+        action,
+        reasonCtrl.text.isEmpty ? 'Manual admin override' : reasonCtrl.text,
+      );
+      ref.invalidate(_adminClaimsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Claim ${action == 'approve' ? 'approved' : 'rejected'} successfully'),
+          backgroundColor: action == 'approve' ? AppTheme.success : AppTheme.danger,
+        ));
+      }
+    } catch (e) {
+      setState(() { _error = e.toString(); });
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(
+      builder: (context, ref, _) {
+        final claim = widget.claim;
+        final score = (claim['eligibility_score'] as num?)?.toInt() ?? 0;
+        final status = claim['status'] as String? ?? '';
+        final scoreColor = score > 70 ? AppTheme.danger : score > 30 ? AppTheme.warning : AppTheme.success;
+        final statusColor = status == 'paid'
+            ? AppTheme.success
+            : status == 'approved'
+                ? AppTheme.primary
+                : status == 'rejected'
+                    ? AppTheme.danger
+                    : AppTheme.warning;
+        final isPending = status == 'pending';
+        final needsInvestigation = isPending && score >= 30;
+
+        // Parse stored investigation if available
+        final storedInvestigation = _investigation;
+        final steps = (storedInvestigation?['steps'] as List?)?.cast<Map<String, dynamic>>();
+        final verdict = storedInvestigation?['verdict'] as String?;
+        final confidence = (storedInvestigation?['confidence'] as num?)?.toInt();
+        final explanation = storedInvestigation?['explanation'] as String?;
+        final penalty = (storedInvestigation?['penalty'] as num?)?.toInt() ?? 0;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: needsInvestigation && storedInvestigation == null
+                  ? AppTheme.warning.withOpacity(0.4)
+                  : Colors.white.withOpacity(0.08),
+            ),
+          ),
+          child: Column(
+            children: [
+              // ── Main row ──────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(color: scoreColor.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+                      child: Center(child: Text('$score', style: TextStyle(color: scoreColor, fontWeight: FontWeight.w800, fontSize: 13))),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(claim['worker'] as String? ?? '—', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                          Text('${claim['city'] ?? ''} • ${claim['event'] ?? ''}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(claim['amount'] as String? ?? '—', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                        const SizedBox(height: 4),
+                        _Chip(label: status.toUpperCase(), color: statusColor),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── AI Investigation panel (only for pending + score >= 30) ──
+              if (needsInvestigation || storedInvestigation != null) ...[
+                Container(
+                  margin: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header row
+                      Row(
+                        children: [
+                          const Icon(Icons.smart_toy_rounded, color: AppTheme.primary, size: 14),
+                          const SizedBox(width: 6),
+                          const Text('Agentic AI Investigation',
+                              style: TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                          const Spacer(),
+                          if (storedInvestigation != null)
+                            GestureDetector(
+                              onTap: () => setState(() => _expanded = !_expanded),
+                              child: Icon(
+                                _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                                color: Colors.white38, size: 18,
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      // Verdict summary (always visible once investigated)
+                      if (verdict != null) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            _Chip(
+                              label: verdict,
+                              color: verdict == 'APPROVED' ? AppTheme.success : AppTheme.danger,
+                            ),
+                            const SizedBox(width: 8),
+                            Text('Confidence: $confidence%',
+                                style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                            if (penalty > 0) ...[
+                              const SizedBox(width: 8),
+                              _Chip(label: '+$penalty penalty', color: AppTheme.danger),
+                            ],
+                          ],
+                        ),
+                      ],
+
+                      // Expanded steps
+                      if (_expanded && steps != null) ...[
+                        const SizedBox(height: 10),
+                        ...steps.map((s) {
+                          final passed = s['passed'] as bool? ?? false;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 6),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(passed ? '✅' : '❌', style: const TextStyle(fontSize: 12)),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(s['step'] as String? ?? '',
+                                          style: TextStyle(
+                                              color: passed ? AppTheme.success : AppTheme.danger,
+                                              fontSize: 11, fontWeight: FontWeight.w700)),
+                                      Text(s['result'] as String? ?? '',
+                                          style: const TextStyle(color: Colors.white54, fontSize: 10)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+
+                      if (_error != null) ...[
+                        const SizedBox(height: 8),
+                        Text(_error!, style: const TextStyle(color: AppTheme.danger, fontSize: 10)),
+                      ],
+
+                      const SizedBox(height: 10),
+
+                      // Action buttons
+                      if (isPending) Row(
+                        children: [
+                          if (storedInvestigation == null)
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: _loading ? null : () => _runInvestigation(context, ref),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primary.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppTheme.primary.withOpacity(0.4)),
+                                  ),
+                                  child: Center(
+                                    child: _loading
+                                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primary))
+                                        : const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.smart_toy_rounded, color: AppTheme.primary, size: 13),
+                                              SizedBox(width: 5),
+                                              Text('Run AI Investigation', style: TextStyle(color: AppTheme.primary, fontSize: 11, fontWeight: FontWeight.w700)),
+                                            ],
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            )
+                          else ...[
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: _loading ? null : () => _override(context, ref, 'approve'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.success.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppTheme.success.withOpacity(0.4)),
+                                  ),
+                                  child: const Center(
+                                    child: Text('✓ Approve', style: TextStyle(color: AppTheme.success, fontSize: 11, fontWeight: FontWeight.w700)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: _loading ? null : () => _override(context, ref, 'reject'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.danger.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: AppTheme.danger.withOpacity(0.4)),
+                                  ),
+                                  child: const Center(
+                                    child: Text('✗ Reject', style: TextStyle(color: AppTheme.danger, fontSize: 11, fontWeight: FontWeight.w700)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -1242,6 +1508,11 @@ class _WorkerCard extends StatelessWidget {
               Text('Risk ${(risk * 100).toStringAsFixed(0)}%',
                   style: TextStyle(color: riskColor, fontWeight: FontWeight.w700, fontSize: 12)),
               const SizedBox(height: 4),
+              if ((w['penalty_score'] as num? ?? 0) > 0)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: _Chip(label: 'Penalty ${(w['penalty_score'] as num).toInt()}', color: AppTheme.danger),
+                ),
               _Chip(label: active ? 'ACTIVE' : 'OFFLINE', color: active ? AppTheme.success : Colors.white38),
             ],
           ),

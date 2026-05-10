@@ -94,6 +94,8 @@ class Worker(Base):
     device_fingerprint = Column(String(200), nullable=True)
     sim_hash = Column(String(64), nullable=True)
     sim_changed_at = Column(DateTime(timezone=True), nullable=True)
+    # Trust / penalty score — incremented by agentic AI on fraudulent rejected claims
+    penalty_score = Column(Float, default=0.0, nullable=False)
     # Soft delete fields
     is_deleted = Column(Boolean, default=False, nullable=False)
     deletion_requested_at = Column(DateTime(timezone=True), nullable=True)
@@ -169,6 +171,7 @@ class Claim(Base):
     fraud_flags = Column(Text, nullable=True)  # JSON string
     auto_approved = Column(Boolean, default=False)
     rejection_reason = Column(Text, nullable=True)
+    ai_investigation = Column(Text, nullable=True)  # JSON: agentic verdict + steps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     processed_at = Column(DateTime(timezone=True), nullable=True)
 

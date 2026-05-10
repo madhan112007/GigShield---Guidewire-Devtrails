@@ -224,6 +224,19 @@ async def _auto_claim_for_event(event_id: str, city: str, db):
         )
         was_platform_active = (ping_result.scalar() or 0) > 0
 
+        from app.services.infra_service import resolve_worker_adjusted_dss
+        try:
+            adjusted_dss, adjusted_hours_ratio, _ = await resolve_worker_adjusted_dss(
+                event=event,
+                worker_id=worker.id,
+                worker_city=worker.city,
+                worker_pincode=worker.pincode,
+                db=db,
+            )
+        except Exception:
+            adjusted_dss = event.dss_multiplier
+            adjusted_hours_ratio = 1.0
+
         fraud_result = calculate_fraud_score(
             worker_city=worker.city,
             event_city=event.city,
@@ -238,8 +251,8 @@ async def _auto_claim_for_event(event_id: str, city: str, db):
 
         payout_data = calculate_payout(
             worker_daily_avg=worker.avg_daily_earnings,
-            dss_multiplier=event.dss_multiplier,
-            active_hours_ratio=1.0,
+            dss_multiplier=adjusted_dss,
+            active_hours_ratio=adjusted_hours_ratio,
             tier=policy.tier,
             existing_claimed_today=daily_cap - effective_cap,
         )
@@ -251,15 +264,15 @@ async def _auto_claim_for_event(event_id: str, city: str, db):
             status=ClaimStatus.PENDING,
             claimed_amount=payout_data["raw_payout"],
             worker_daily_avg=worker.avg_daily_earnings,
-            dss_multiplier=event.dss_multiplier,
-            active_hours_ratio=1.0,
+            dss_multiplier=adjusted_dss,
+            active_hours_ratio=adjusted_hours_ratio,
             fraud_score=fraud_result["fraud_score"],
             fraud_flags=fraud_result["flags_json"],
             auto_approved=fraud_result["auto_approve"],
         )
 
         if fraud_result["auto_approve"]:
-            approved = min(payout_data["income_shortfall"], effective_cap)
+            approved = min(payout_data["approved_amount"], effective_cap)
             claim.status = ClaimStatus.APPROVED
             claim.approved_amount = round(approved, 2)
             claim.processed_at = now
@@ -376,7 +389,7 @@ async def _do_daily_batch_settlement():
     """
     Production batch settlement flow:
     1. Find all disruption events from last 24hrs
-    2. For each active worker, check if any disruption hit their GPS ward
+    2. For each active worker, check if any disruption hit their delivery zone
     3. Calculate infra-adjusted payout for the day
     4. Auto-approve if fraud score < 30, else hold for review
     5. Initiate UPI payout — worker gets money by 6am
@@ -504,7 +517,7 @@ async def _do_daily_batch_settlement():
             # Get worker's GPS pings from last 24hrs (pre-fetched)
             pings = pings_by_worker.get(worker.id, [])
 
-            # Find disruptions that affected this worker's wards
+            # Find disruptions that affected this worker's delivery zones
             for event in events:
                 # Match event city to worker's registered city or GPS city
                 worker_cities = {worker.city.lower()}
@@ -526,28 +539,22 @@ async def _do_daily_batch_settlement():
                 if dup.scalar_one_or_none():
                     continue
 
-                # Worker activity zone infra score — weighted average of all
-                # wards the worker regularly operates in (last 30 days)
-                # Fallback: 0.65 (safe tier-2 average) if scoring fails
-                from app.services.infra_service import get_activity_zone_infra_score
+                from app.services.infra_service import resolve_worker_adjusted_dss
                 try:
-                    activity_infra = await get_activity_zone_infra_score(
+                    adjusted_dss, infra_hours_ratio, activity_infra = await resolve_worker_adjusted_dss(
+                        event=event,
                         worker_id=worker.id,
+                        worker_city=worker.city,
+                        worker_pincode=worker.pincode,
                         db=db,
-                        fallback_city=worker.city,
-                        fallback_pincode=worker.pincode,
-                        days=30,
                     )
                 except Exception as e:
-                    print(f"[Batch] infra_score fallback for worker {worker.id[:8]}: {e}")
+                    print(f"[Batch] resolve_worker_adjusted_dss fallback for worker {worker.id[:8]}: {e}")
+                    adjusted_dss = event.dss_multiplier
+                    infra_hours_ratio = active_hours_ratio(event)
                     activity_infra = 0.65
 
-                adjusted_dss = round(min(
-                    event.dss_multiplier * (0.85 + (activity_infra - 0.30) * (0.55 / 0.70)), 1.0
-                ), 3)
-
                 # Actual hours lost: ended_at - started_at clamped to 6am-10pm IST
-                from app.api.claims import active_hours_ratio
                 effective_hours_ratio = active_hours_ratio(event)
 
                 # Cap checks
@@ -813,3 +820,85 @@ def process_auto_claims(disruption_event_id: str, city: str):
     n = _run(_run_claims())
     print(f"[Celery] Auto-claims for {disruption_event_id}: {n} claims processed")
     return {"event_id": disruption_event_id, "claims_processed": n}
+
+
+@celery_app.task(name="app.workers.tasks.auto_investigate_pending_claims")
+def auto_investigate_pending_claims():
+    """Every 10 min: run agentic AI on all PENDING claims with fraud_score >= 30."""
+    result = _run(_do_auto_investigate())
+    print(f"[Celery] Auto-investigate: {result}")
+    return result
+
+
+async def _do_auto_investigate():
+    from app.database import AsyncSessionLocal
+    from sqlalchemy import select
+    from app.models.models import Claim, ClaimStatus
+    from app.services.agentic_service import investigate_claim
+    from app.services.notification_service import notify_claim_approved, notify_claim_rejected
+    import json
+
+    now = datetime.now(timezone.utc)
+    investigated = 0
+    approved = 0
+    rejected = 0
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(Claim).where(
+                Claim.status == ClaimStatus.PENDING,
+                Claim.fraud_score >= 30,
+                Claim.ai_investigation.is_(None),
+            ).order_by(Claim.created_at.asc()).limit(50)
+        )
+        pending_claims = result.scalars().all()
+
+        for claim in pending_claims:
+            try:
+                from app.models.models import Worker, DisruptionEvent
+                worker_result = await db.execute(select(Worker).where(Worker.id == claim.worker_id))
+                worker = worker_result.scalar_one_or_none()
+                if not worker:
+                    continue
+
+                investigation = await investigate_claim(claim.id, db)
+                if "error" in investigation:
+                    continue
+
+                claim.ai_investigation = json.dumps(investigation)
+
+                if investigation["verdict"] == "APPROVED":
+                    claim.status = ClaimStatus.APPROVED
+                    claim.processed_at = now
+                    if not claim.approved_amount:
+                        claim.approved_amount = round(claim.claimed_amount * 0.8, 2)
+                    from app.models.models import Policy
+                    policy_result = await db.execute(select(Policy).where(Policy.id == claim.policy_id))
+                    policy = policy_result.scalar_one_or_none()
+                    if policy:
+                        policy.total_claimed = round(float(policy.total_claimed or 0) + (claim.approved_amount or 0), 2)
+                        policy.claims_count = (policy.claims_count or 0) + 1
+                    event_result = await db.execute(select(DisruptionEvent).where(DisruptionEvent.id == claim.disruption_event_id))
+                    event = event_result.scalar_one_or_none()
+                    if event:
+                        await notify_claim_approved(db, worker, claim, event.disruption_type.value)
+                    approved += 1
+                else:
+                    claim.status = ClaimStatus.REJECTED
+                    claim.processed_at = now
+                    claim.rejection_reason = investigation["explanation"]
+                    penalty = investigation.get("penalty", 0)
+                    if penalty > 0:
+                        worker.penalty_score = round(float(worker.penalty_score or 0) + penalty, 1)
+                        worker.risk_score = min(1.0, round(float(worker.risk_score or 0.5) + penalty / 100.0, 3))
+                    await notify_claim_rejected(db, worker, claim)
+                    rejected += 1
+
+                investigated += 1
+                await db.commit()
+            except Exception as e:
+                print(f"[AutoInvestigate] ERROR on claim {claim.id}: {e}")
+                await db.rollback()
+                continue
+
+    return {"investigated": investigated, "approved": approved, "rejected": rejected}

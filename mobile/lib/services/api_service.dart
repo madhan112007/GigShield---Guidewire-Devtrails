@@ -348,6 +348,19 @@ class ApiService {
   }
 
 
+  Future<Map<String, dynamic>> investigateClaim(String claimId) async {
+    final res = await _dio.post('/admin/claims/$claimId/investigate');
+    return res.data;
+  }
+
+  Future<Map<String, dynamic>> overrideClaim(String claimId, String action, String reason) async {
+    final res = await _dio.post('/admin/claims/$claimId/override', data: {
+      'action': action,
+      'reason': reason,
+    });
+    return res.data;
+  }
+
   Future<void> deleteAccount() async {
     await _dio.delete('/workers/me');
   }

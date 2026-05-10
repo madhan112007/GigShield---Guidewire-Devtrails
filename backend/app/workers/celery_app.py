@@ -50,6 +50,11 @@ celery_app.conf.beat_schedule = {
         "task": "app.workers.tasks.purge_deleted_accounts",
         "schedule": crontab(hour=22, minute=0),  # 22:00 UTC = 3:30am IST
     },
+    # Auto-investigate PENDING claims with fraud_score >= 30 every 10 min
+    "auto-investigate-pending-claims": {
+        "task": "app.workers.tasks.auto_investigate_pending_claims",
+        "schedule": 600.0,
+    },
 }
 
 celery_app.conf.timezone = "UTC"

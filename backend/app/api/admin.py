@@ -135,6 +135,7 @@ async def list_all_workers(db: AsyncSession = Depends(get_db), _: bool = Depends
             "platform":     w.platform.value,
             "city":         w.city,
             "risk_score":   w.risk_score,
+            "penalty_score": w.penalty_score or 0.0,
             "is_active":    w.is_active,
             "is_verified":  w.is_verified,
         }
@@ -258,6 +259,138 @@ async def get_claim_eligibility_detail(claim_id: str, db: AsyncSession = Depends
 @router.get("/claims/{claim_id}/fraud")
 async def get_claim_fraud_detail_alias(claim_id: str, db: AsyncSession = Depends(get_db), _: bool = Depends(require_admin)):
     return await get_claim_eligibility_detail(claim_id, db, _)
+
+
+@router.post("/claims/{claim_id}/investigate")
+async def investigate_claim_endpoint(
+    claim_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(require_admin),
+):
+    """
+    Trigger the Agentic AI investigation on a claim.
+    Runs 5 evidence steps, produces a verdict + explanation.
+    Automatically updates claim status and worker penalty_score.
+    """
+    import json
+    from app.models.models import Claim, Worker, ClaimStatus
+    from app.services.agentic_service import investigate_claim
+    from app.services.notification_service import notify_claim_approved, notify_claim_rejected
+
+    result_row = await db.execute(
+        select(Claim, Worker)
+        .join(Worker, Claim.worker_id == Worker.id)
+        .where(Claim.id.ilike(f"{claim_id}%"))
+    )
+    row = result_row.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    claim, worker = row
+
+    # Run the agent
+    investigation = await investigate_claim(claim.id, db)
+    if "error" in investigation:
+        raise HTTPException(status_code=404, detail=investigation["error"])
+
+    # Persist investigation result on claim
+    claim.ai_investigation = json.dumps(investigation)
+    now = datetime.now(timezone.utc)
+
+    if investigation["verdict"] == "APPROVED":
+        claim.status = ClaimStatus.APPROVED
+        claim.processed_at = now
+        # Calculate payout if not already set
+        if not claim.approved_amount:
+            claim.approved_amount = round(claim.claimed_amount * 0.8, 2)  # conservative 80%
+        # Update policy total_claimed
+        from app.models.models import Policy
+        policy_result = await db.execute(
+            select(Policy).where(Policy.id == claim.policy_id)
+        )
+        policy = policy_result.scalar_one_or_none()
+        if policy:
+            policy.total_claimed = round(float(policy.total_claimed or 0) + (claim.approved_amount or 0), 2)
+            policy.claims_count = (policy.claims_count or 0) + 1
+        from app.models.models import DisruptionEvent
+        event_result = await db.execute(
+            select(DisruptionEvent).where(DisruptionEvent.id == claim.disruption_event_id)
+        )
+        event = event_result.scalar_one_or_none()
+        if event:
+            await notify_claim_approved(db, worker, claim, event.disruption_type.value)
+    else:
+        claim.status = ClaimStatus.REJECTED
+        claim.processed_at = now
+        claim.rejection_reason = investigation["explanation"]
+        # Apply penalty to worker
+        penalty = investigation.get("penalty", 0)
+        if penalty > 0:
+            worker.penalty_score = round(float(worker.penalty_score or 0) + penalty, 1)
+            worker.risk_score = min(1.0, round(float(worker.risk_score or 0.5) + penalty / 100.0, 3))
+        await notify_claim_rejected(db, worker, claim)
+
+    await db.commit()
+    await db.refresh(claim)
+    return {
+        "claim_id": claim.id,
+        "new_status": claim.status.value,
+        "investigation": investigation,
+    }
+
+
+@router.post("/claims/{claim_id}/override")
+async def override_claim(
+    claim_id: str,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    _: bool = Depends(require_admin),
+):
+    """
+    Manual admin override — approve or reject a claim with a reason.
+    body: { "action": "approve" | "reject", "reason": str }
+    """
+    from app.models.models import Claim, Worker, ClaimStatus
+    from app.services.notification_service import notify_claim_approved, notify_claim_rejected
+
+    action = body.get("action", "").lower()
+    reason = body.get("reason", "Manual admin override")
+    if action not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+
+    result_row = await db.execute(
+        select(Claim, Worker)
+        .join(Worker, Claim.worker_id == Worker.id)
+        .where(Claim.id.ilike(f"{claim_id}%"))
+    )
+    row = result_row.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    claim, worker = row
+
+    now = datetime.now(timezone.utc)
+    if action == "approve":
+        claim.status = ClaimStatus.APPROVED
+        claim.processed_at = now
+        if not claim.approved_amount:
+            claim.approved_amount = round(claim.claimed_amount * 0.8, 2)
+        from app.models.models import Policy, DisruptionEvent
+        policy_result = await db.execute(select(Policy).where(Policy.id == claim.policy_id))
+        policy = policy_result.scalar_one_or_none()
+        if policy:
+            policy.total_claimed = round(float(policy.total_claimed or 0) + (claim.approved_amount or 0), 2)
+            policy.claims_count = (policy.claims_count or 0) + 1
+        event_result = await db.execute(select(DisruptionEvent).where(DisruptionEvent.id == claim.disruption_event_id))
+        event = event_result.scalar_one_or_none()
+        if event:
+            await notify_claim_approved(db, worker, claim, event.disruption_type.value)
+    else:
+        claim.status = ClaimStatus.REJECTED
+        claim.processed_at = now
+        claim.rejection_reason = reason
+        await notify_claim_rejected(db, worker, claim)
+
+    await db.commit()
+    return {"claim_id": claim.id, "new_status": claim.status.value, "reason": reason}
 
 
 @router.get("/disbursement-ratio")
